@@ -3,7 +3,7 @@
  * Plugin Name: Generative Visualizations
  * Description: Crea y gestiona visualizaciones generativas con D3.js o P5.js.
  * Version:     0.1.0
- * Author:      Tu Nombre
+ * Author:      KGMT Knowledge Services
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -126,6 +126,7 @@ function gv_render_settings_page() {
     <div class="wrap">
         <h1>Visualizaciones Generativas</h1>
         <p>Aquí puedes administrar el plugin.</p>
+        <p><strong>Desarrollador:</strong> KGMT Knowledge Services</p>
     </div>
     <?php
 }
