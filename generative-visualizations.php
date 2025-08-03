@@ -27,8 +27,8 @@ function gv_register_cpt() {
         'labels'       => $labels,
         'public'       => false,
         'show_ui'      => true,
+        'show_in_menu' => 'gv-settings',
         'supports'     => ['title', 'thumbnail'],
-        'menu_icon'    => 'dashicons-chart-area',
     ];
 
     register_post_type( 'visualization', $args );
