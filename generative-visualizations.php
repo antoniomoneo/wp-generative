@@ -23,12 +23,15 @@ function gv_register_cpt() {
     ];
 
     $args = [
-        'label'        => 'Visualizaciones',
-        'labels'       => $labels,
-        'public'       => false,
-        'show_ui'      => true,
-        'show_in_menu' => 'gv-settings',
-        'supports'     => ['title', 'thumbnail'],
+        'label'              => 'Visualizaciones',
+        'labels'             => $labels,
+        'public'             => false,
+        'show_ui'            => true,
+        'show_in_menu'       => 'upload.php',
+        'publicly_queryable' => false,
+        'exclude_from_search'=> true,
+        'rewrite'            => false,
+        'supports'           => ['title', 'thumbnail'],
     ];
 
     register_post_type( 'visualization', $args );
@@ -77,6 +80,21 @@ function gv_save_metabox( $post_id ) {
 }
 add_action( 'save_post', 'gv_save_metabox' );
 
+function gv_auto_publish_visualization( $post_id, $post, $update ) {
+    if ( 'visualization' !== $post->post_type ) {
+        return;
+    }
+    if ( 'publish' !== $post->post_status ) {
+        remove_action( 'save_post', 'gv_auto_publish_visualization', 10 );
+        wp_update_post([
+            'ID'          => $post_id,
+            'post_status' => 'publish',
+        ]);
+        add_action( 'save_post', 'gv_auto_publish_visualization', 10, 3 );
+    }
+}
+add_action( 'save_post', 'gv_auto_publish_visualization', 10, 3 );
+
 function gv_shortcode( $atts ) {
     $atts = shortcode_atts([ 'slug' => '' ], $atts, 'gv' );
     $post = get_posts([
@@ -101,14 +119,37 @@ function gv_shortcode( $atts ) {
 }
 add_shortcode( 'gv', 'gv_shortcode' );
 
+function gv_get_theme_palette() {
+    $palette = [];
+    $theme   = get_theme_support( 'editor-color-palette' );
+    if ( $theme ) {
+        foreach ( $theme[0] as $color ) {
+            $palette[] = $color['color'];
+        }
+    }
+    return $palette;
+}
+
 function gv_enqueue_scripts() {
     if ( ! is_admin() ) {
         wp_enqueue_script( 'd3', 'https://d3js.org/d3.v7.min.js', [], null, true );
-        wp_enqueue_script( 'gv-front', plugin_dir_url(__FILE__) . 'assets/front-end.js', ['d3'], '0.1.0', true );
+        wp_enqueue_script( 'gv-front', plugin_dir_url(__FILE__) . 'assets/front-end.js', [ 'd3' ], '0.1.0', true );
+        wp_localize_script( 'gv-front', 'gvSettings', [ 'palette' => gv_get_theme_palette() ] );
         wp_enqueue_style( 'gv-style', plugin_dir_url(__FILE__) . 'assets/style.css', [], '0.1.0' );
     }
 }
 add_action( 'wp_enqueue_scripts', 'gv_enqueue_scripts' );
+
+function gv_enqueue_admin_scripts( $hook ) {
+    $screen = get_current_screen();
+    if ( 'visualization' !== $screen->post_type ) {
+        return;
+    }
+    wp_enqueue_script( 'd3', 'https://d3js.org/d3.v7.min.js', [], null, true );
+    wp_enqueue_script( 'gv-admin', plugin_dir_url(__FILE__) . 'assets/admin-preview.js', [ 'd3' ], '0.1.0', true );
+    wp_localize_script( 'gv-admin', 'gvSettings', [ 'palette' => gv_get_theme_palette() ] );
+}
+add_action( 'admin_enqueue_scripts', 'gv_enqueue_admin_scripts' );
 
 function gv_register_menu_page() {
     add_menu_page(
