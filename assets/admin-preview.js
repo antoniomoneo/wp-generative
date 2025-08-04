@@ -23,7 +23,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     preview.innerHTML = '';
     if (!url) return;
-    const data = await fetch(url).then(r => r.json());
+    let data;
+    if (url.toLowerCase().endsWith('.csv')) {
+      data = await d3.csv(url, d3.autoType);
+    } else {
+      data = await fetch(url).then(r => r.json());
+    }
     const type = typeField.value || 'skeleton';
 
     switch(type) {

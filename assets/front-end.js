@@ -19,7 +19,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const type = el.dataset.type || 'skeleton';
 
-    const data = await fetch(dataUrl).then(r => r.json());
+    let data;
+    if (dataUrl.toLowerCase().endsWith('.csv')) {
+      data = await d3.csv(dataUrl, d3.autoType);
+    } else {
+      data = await fetch(dataUrl).then(r => r.json());
+    }
 
     if (typeof window.drawVisualization === 'function') {
       window.drawVisualization(el, data, palette);
