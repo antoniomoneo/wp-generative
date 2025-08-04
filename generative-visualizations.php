@@ -151,24 +151,3 @@ function gv_enqueue_admin_scripts( $hook ) {
 }
 add_action( 'admin_enqueue_scripts', 'gv_enqueue_admin_scripts' );
 
-function gv_register_menu_page() {
-    add_menu_page(
-        'Visualizaciones Generativas',
-        'Generative',
-        'manage_options',
-        'gv-settings',
-        'gv_render_settings_page',
-        'dashicons-chart-area'
-    );
-}
-
-function gv_render_settings_page() {
-    ?>
-    <div class="wrap">
-        <h1>Visualizaciones Generativas</h1>
-        <p>Aquí puedes administrar el plugin.</p>
-        <p><strong>Desarrollador:</strong> KGMT Knowledge Services</p>
-    </div>
-    <?php
-}
-add_action( 'admin_menu', 'gv_register_menu_page' );
