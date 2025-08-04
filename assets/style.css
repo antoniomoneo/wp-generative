@@ -2,3 +2,23 @@
   display: block;
   margin: 0 auto;
 }
+
+.gv-controls {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.gv-controls .gv-status {
+  margin-left: 10px;
+}
+
+.rib {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.spine {
+  stroke: #666;
+  stroke-width: 3;
+}
