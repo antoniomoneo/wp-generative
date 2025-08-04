@@ -12,4 +12,14 @@ Este plugin de WordPress permite crear y gestionar visualizaciones generativas m
 
 La integración con Google Apps Script ha sido eliminada y ya no se incluyen archivos `script.gs` o `script.html`.
 
+## Uso
+
+Cada visualización tiene un campo **Slug**. Utiliza el siguiente código corto para insertarla en cualquier página o entrada de WordPress:
+
+```
+[gv slug="tu-slug"]
+```
+
+El panel de edición muestra el código generado para que puedas copiarlo fácilmente.
+
 Desarrollado por KGMT Knowledge Services.
