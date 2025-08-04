@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Generative Visualizations
  * Description: Crea y gestiona visualizaciones generativas con D3.js o P5.js.
- * Version:     0.1.0
+ * Version:     0.1.1
  * Requires at least: 5.0
  * Author:      KGMT Knowledge Services
  */
@@ -10,7 +10,7 @@
 if ( defined( 'GV_PLUGIN_VERSION' ) ) {
     return;
 }
-define( 'GV_PLUGIN_VERSION', '0.1.0' );
+define( 'GV_PLUGIN_VERSION', '0.1.1' );
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -58,7 +58,6 @@ function gv_render_metabox( $post ) {
     $data     = get_post_meta( $post->ID, '_gv_data_url', true );
     $palette  = get_post_meta( $post->ID, '_gv_palette', true );
     $type     = get_post_meta( $post->ID, '_gv_viz_type', true );
-    $customjs = get_post_meta( $post->ID, '_gv_custom_js', true );
 
     ?>
     <p>
@@ -77,13 +76,15 @@ function gv_render_metabox( $post ) {
             <option value="bars" <?php selected( $type, 'bars' ); ?>>Barras</option>
         </select>
     </p>
+    <?php $palettes = gv_get_available_palettes(); ?>
     <p>
-        <label>Script de dibujo personalizado (URL):</label>
-        <input type="url" name="gv_custom_js" value="<?php echo esc_url( $customjs ); ?>" />
-    </p>
-    <p>
-        <label>Paleta de colores (JSON o lista):</label>
-        <input type="text" name="gv_palette" value="<?php echo esc_attr( $palette ); ?>" />
+        <label>Paleta de colores:</label>
+        <select name="gv_palette">
+            <?php foreach ( $palettes as $label => $colors ) :
+                $value = wp_json_encode( $colors ); ?>
+                <option value="<?php echo esc_attr( $value ); ?>" <?php selected( $palette, $value ); ?>><?php echo esc_html( $label ); ?></option>
+            <?php endforeach; ?>
+        </select>
     </p>
     <p>Vista previa:</p>
     <div id="gv-preview"></div>
@@ -100,7 +101,6 @@ function gv_save_metabox( $post_id ) {
     update_post_meta( $post_id, '_gv_data_url', esc_url_raw( $_POST['gv_data_url'] ?? '' ) );
     update_post_meta( $post_id, '_gv_palette', sanitize_text_field( $_POST['gv_palette'] ?? '' ) );
     update_post_meta( $post_id, '_gv_viz_type', sanitize_text_field( $_POST['gv_viz_type'] ?? 'skeleton' ) );
-    update_post_meta( $post_id, '_gv_custom_js', esc_url_raw( $_POST['gv_custom_js'] ?? '' ) );
 }
 add_action( 'save_post', 'gv_save_metabox' );
 
@@ -134,12 +134,6 @@ function gv_shortcode( $atts ) {
     $data_url = get_post_meta( $id, '_gv_data_url', true );
     $palette  = get_post_meta( $id, '_gv_palette', true );
     $type     = get_post_meta( $id, '_gv_viz_type', true );
-    $customjs = get_post_meta( $id, '_gv_custom_js', true );
-
-    if ( $customjs ) {
-        $handle = 'gv-custom-' . $id;
-        wp_enqueue_script( $handle, esc_url( $customjs ), [ 'gv-front' ], null, true );
-    }
 
     ob_start(); ?>
     <div class="gv-container" data-id="<?php echo esc_attr( $id ); ?>"
@@ -162,14 +156,20 @@ function gv_get_theme_palette() {
     return $palette;
 }
 
+function gv_get_available_palettes() {
+    $palettes = [ 'Paleta del tema' => gv_get_theme_palette() ];
+    $palettes['Category10'] = [ '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf' ];
+    return $palettes;
+}
+
 function gv_enqueue_scripts() {
     if ( ! is_admin() ) {
         wp_enqueue_script( 'd3', 'https://d3js.org/d3.v7.min.js', [], null, true );
         wp_enqueue_script( 'd3-scale-chromatic', 'https://d3js.org/d3-scale-chromatic.v3.min.js', [ 'd3' ], null, true );
         wp_enqueue_script( 'gifjs', 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js', [], null, true );
-        wp_enqueue_script( 'gv-front', plugin_dir_url(__FILE__) . 'assets/front-end.js', [ 'd3', 'd3-scale-chromatic', 'gifjs' ], '0.1.0', true );
+        wp_enqueue_script( 'gv-front', plugin_dir_url(__FILE__) . 'assets/front-end.js', [ 'd3', 'd3-scale-chromatic', 'gifjs' ], GV_PLUGIN_VERSION, true );
         wp_localize_script( 'gv-front', 'gvSettings', [ 'palette' => gv_get_theme_palette() ] );
-        wp_enqueue_style( 'gv-style', plugin_dir_url(__FILE__) . 'assets/style.css', [], '0.1.0' );
+        wp_enqueue_style( 'gv-style', plugin_dir_url(__FILE__) . 'assets/style.css', [], GV_PLUGIN_VERSION );
     }
 }
 add_action( 'wp_enqueue_scripts', 'gv_enqueue_scripts' );
@@ -184,7 +184,7 @@ function gv_enqueue_admin_scripts( $hook ) {
     }
     wp_enqueue_script( 'd3', 'https://d3js.org/d3.v7.min.js', [], null, true );
     wp_enqueue_script( 'd3-scale-chromatic', 'https://d3js.org/d3-scale-chromatic.v3.min.js', [ 'd3' ], null, true );
-    wp_enqueue_script( 'gv-admin', plugin_dir_url(__FILE__) . 'assets/admin-preview.js', [ 'd3', 'd3-scale-chromatic' ], '0.1.0', true );
+    wp_enqueue_script( 'gv-admin', plugin_dir_url(__FILE__) . 'assets/admin-preview.js', [ 'd3', 'd3-scale-chromatic' ], GV_PLUGIN_VERSION, true );
     wp_localize_script( 'gv-admin', 'gvSettings', [ 'palette' => gv_get_theme_palette() ] );
 }
 add_action( 'admin_enqueue_scripts', 'gv_enqueue_admin_scripts' );
