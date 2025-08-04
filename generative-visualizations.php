@@ -3,6 +3,7 @@
  * Plugin Name: Generative Visualizations
  * Description: Crea y gestiona visualizaciones generativas con D3.js o P5.js.
  * Version:     0.1.0
+ * Requires at least: 5.0
  * Author:      KGMT Knowledge Services
  */
 
@@ -46,9 +47,12 @@ add_action( 'add_meta_boxes', 'gv_add_metaboxes' );
 function gv_render_metabox( $post ) {
     wp_nonce_field( 'gv_save_metabox', 'gv_metabox_nonce' );
 
-    $slug    = get_post_meta( $post->ID, '_gv_slug', true );
-    $data    = get_post_meta( $post->ID, '_gv_data_url', true );
-    $palette = get_post_meta( $post->ID, '_gv_palette', true );
+    $slug      = get_post_meta( $post->ID, '_gv_slug', true );
+    $data      = get_post_meta( $post->ID, '_gv_data_url', true );
+    $palette   = get_post_meta( $post->ID, '_gv_palette', true );
+    $type      = get_post_meta( $post->ID, '_gv_viz_type', true );
+    $appscript = get_post_meta( $post->ID, '_gv_appscript_url', true );
+    $customjs  = get_post_meta( $post->ID, '_gv_custom_js', true );
 
     ?>
     <p>
@@ -58,6 +62,22 @@ function gv_render_metabox( $post ) {
     <p>
         <label>URL de datos (JSON/CSV):</label>
         <input type="url" name="gv_data_url" value="<?php echo esc_url( $data ); ?>" />
+    </p>
+    <p>
+        <label>URL de App Script (opcional):</label>
+        <input type="url" name="gv_appscript_url" value="<?php echo esc_url( $appscript ); ?>" />
+    </p>
+    <p>
+        <label>Tipo de visualización:</label>
+        <select name="gv_viz_type">
+            <option value="skeleton" <?php selected( $type, 'skeleton' ); ?>>Skeleton</option>
+            <option value="circles" <?php selected( $type, 'circles' ); ?>>Círculos</option>
+            <option value="bars" <?php selected( $type, 'bars' ); ?>>Barras</option>
+        </select>
+    </p>
+    <p>
+        <label>Script de dibujo personalizado (URL):</label>
+        <input type="url" name="gv_custom_js" value="<?php echo esc_url( $customjs ); ?>" />
     </p>
     <p>
         <label>Paleta de colores (JSON o lista):</label>
@@ -77,6 +97,9 @@ function gv_save_metabox( $post_id ) {
     update_post_meta( $post_id, '_gv_slug', sanitize_title( $_POST['gv_slug'] ?? '' ) );
     update_post_meta( $post_id, '_gv_data_url', esc_url_raw( $_POST['gv_data_url'] ?? '' ) );
     update_post_meta( $post_id, '_gv_palette', sanitize_text_field( $_POST['gv_palette'] ?? '' ) );
+    update_post_meta( $post_id, '_gv_viz_type', sanitize_text_field( $_POST['gv_viz_type'] ?? 'skeleton' ) );
+    update_post_meta( $post_id, '_gv_appscript_url', esc_url_raw( $_POST['gv_appscript_url'] ?? '' ) );
+    update_post_meta( $post_id, '_gv_custom_js', esc_url_raw( $_POST['gv_custom_js'] ?? '' ) );
 }
 add_action( 'save_post', 'gv_save_metabox' );
 
@@ -106,13 +129,23 @@ function gv_shortcode( $atts ) {
 
     if ( ! $post ) return '';
 
-    $id       = $post[0]->ID;
-    $data_url = get_post_meta( $id, '_gv_data_url', true );
-    $palette  = get_post_meta( $id, '_gv_palette', true );
+    $id        = $post[0]->ID;
+    $data_url  = get_post_meta( $id, '_gv_data_url', true );
+    $palette   = get_post_meta( $id, '_gv_palette', true );
+    $type      = get_post_meta( $id, '_gv_viz_type', true );
+    $appscript = get_post_meta( $id, '_gv_appscript_url', true );
+    $customjs  = get_post_meta( $id, '_gv_custom_js', true );
+
+    if ( $customjs ) {
+        $handle = 'gv-custom-' . $id;
+        wp_enqueue_script( $handle, esc_url( $customjs ), [ 'gv-front' ], null, true );
+    }
 
     ob_start(); ?>
     <div class="gv-container" data-id="<?php echo esc_attr( $id ); ?>"
          data-url="<?php echo esc_url( $data_url ); ?>"
+         data-appscript="<?php echo esc_url( $appscript ); ?>"
+         data-type="<?php echo esc_attr( $type ); ?>"
          data-palette="<?php echo esc_attr( $palette ); ?>"></div>
     <?php
     return ob_get_clean();
@@ -133,7 +166,9 @@ function gv_get_theme_palette() {
 function gv_enqueue_scripts() {
     if ( ! is_admin() ) {
         wp_enqueue_script( 'd3', 'https://d3js.org/d3.v7.min.js', [], null, true );
-        wp_enqueue_script( 'gv-front', plugin_dir_url(__FILE__) . 'assets/front-end.js', [ 'd3' ], '0.1.0', true );
+        wp_enqueue_script( 'd3-scale-chromatic', 'https://d3js.org/d3-scale-chromatic.v3.min.js', [ 'd3' ], null, true );
+        wp_enqueue_script( 'gifjs', 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js', [], null, true );
+        wp_enqueue_script( 'gv-front', plugin_dir_url(__FILE__) . 'assets/front-end.js', [ 'd3', 'd3-scale-chromatic', 'gifjs' ], '0.1.0', true );
         wp_localize_script( 'gv-front', 'gvSettings', [ 'palette' => gv_get_theme_palette() ] );
         wp_enqueue_style( 'gv-style', plugin_dir_url(__FILE__) . 'assets/style.css', [], '0.1.0' );
     }
@@ -141,12 +176,16 @@ function gv_enqueue_scripts() {
 add_action( 'wp_enqueue_scripts', 'gv_enqueue_scripts' );
 
 function gv_enqueue_admin_scripts( $hook ) {
+    if ( ! function_exists( 'get_current_screen' ) ) {
+        return;
+    }
     $screen = get_current_screen();
-    if ( 'visualization' !== $screen->post_type ) {
+    if ( ! $screen || 'visualization' !== $screen->post_type ) {
         return;
     }
     wp_enqueue_script( 'd3', 'https://d3js.org/d3.v7.min.js', [], null, true );
-    wp_enqueue_script( 'gv-admin', plugin_dir_url(__FILE__) . 'assets/admin-preview.js', [ 'd3' ], '0.1.0', true );
+    wp_enqueue_script( 'd3-scale-chromatic', 'https://d3js.org/d3-scale-chromatic.v3.min.js', [ 'd3' ], null, true );
+    wp_enqueue_script( 'gv-admin', plugin_dir_url(__FILE__) . 'assets/admin-preview.js', [ 'd3', 'd3-scale-chromatic' ], '0.1.0', true );
     wp_localize_script( 'gv-admin', 'gvSettings', [ 'palette' => gv_get_theme_palette() ] );
 }
 add_action( 'admin_enqueue_scripts', 'gv_enqueue_admin_scripts' );
