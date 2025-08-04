@@ -10,8 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlField = document.querySelector('input[name="gv_data_url"]');
     const paletteField = document.querySelector('input[name="gv_palette"]');
     const typeField = document.querySelector('select[name="gv_viz_type"]');
-    const appField = document.querySelector('input[name="gv_appscript_url"]');
-    const url = appField.value || urlField.value;
+    const url = urlField.value;
     let paletteAttr = paletteField.value;
     let palette = [];
     try { palette = paletteAttr ? JSON.parse(paletteAttr) : []; } catch(e) {}
@@ -42,8 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const urlField = document.querySelector('input[name="gv_data_url"]');
   const paletteField = document.querySelector('input[name="gv_palette"]');
   const typeField = document.querySelector('select[name="gv_viz_type"]');
-  const appField = document.querySelector('input[name="gv_appscript_url"]');
-  [urlField, paletteField, typeField, appField].forEach(f=>f.addEventListener('input', render));
+  [urlField, paletteField, typeField].forEach(f=>f.addEventListener('input', render));
   render();
 });
 

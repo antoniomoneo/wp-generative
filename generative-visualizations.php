@@ -47,12 +47,11 @@ add_action( 'add_meta_boxes', 'gv_add_metaboxes' );
 function gv_render_metabox( $post ) {
     wp_nonce_field( 'gv_save_metabox', 'gv_metabox_nonce' );
 
-    $slug      = get_post_meta( $post->ID, '_gv_slug', true );
-    $data      = get_post_meta( $post->ID, '_gv_data_url', true );
-    $palette   = get_post_meta( $post->ID, '_gv_palette', true );
-    $type      = get_post_meta( $post->ID, '_gv_viz_type', true );
-    $appscript = get_post_meta( $post->ID, '_gv_appscript_url', true );
-    $customjs  = get_post_meta( $post->ID, '_gv_custom_js', true );
+    $slug     = get_post_meta( $post->ID, '_gv_slug', true );
+    $data     = get_post_meta( $post->ID, '_gv_data_url', true );
+    $palette  = get_post_meta( $post->ID, '_gv_palette', true );
+    $type     = get_post_meta( $post->ID, '_gv_viz_type', true );
+    $customjs = get_post_meta( $post->ID, '_gv_custom_js', true );
 
     ?>
     <p>
@@ -62,10 +61,6 @@ function gv_render_metabox( $post ) {
     <p>
         <label>URL de datos (JSON/CSV):</label>
         <input type="url" name="gv_data_url" value="<?php echo esc_url( $data ); ?>" />
-    </p>
-    <p>
-        <label>URL de App Script (opcional):</label>
-        <input type="url" name="gv_appscript_url" value="<?php echo esc_url( $appscript ); ?>" />
     </p>
     <p>
         <label>Tipo de visualización:</label>
@@ -98,7 +93,6 @@ function gv_save_metabox( $post_id ) {
     update_post_meta( $post_id, '_gv_data_url', esc_url_raw( $_POST['gv_data_url'] ?? '' ) );
     update_post_meta( $post_id, '_gv_palette', sanitize_text_field( $_POST['gv_palette'] ?? '' ) );
     update_post_meta( $post_id, '_gv_viz_type', sanitize_text_field( $_POST['gv_viz_type'] ?? 'skeleton' ) );
-    update_post_meta( $post_id, '_gv_appscript_url', esc_url_raw( $_POST['gv_appscript_url'] ?? '' ) );
     update_post_meta( $post_id, '_gv_custom_js', esc_url_raw( $_POST['gv_custom_js'] ?? '' ) );
 }
 add_action( 'save_post', 'gv_save_metabox' );
@@ -130,11 +124,10 @@ function gv_shortcode( $atts ) {
     if ( ! $post ) return '';
 
     $id        = $post[0]->ID;
-    $data_url  = get_post_meta( $id, '_gv_data_url', true );
-    $palette   = get_post_meta( $id, '_gv_palette', true );
-    $type      = get_post_meta( $id, '_gv_viz_type', true );
-    $appscript = get_post_meta( $id, '_gv_appscript_url', true );
-    $customjs  = get_post_meta( $id, '_gv_custom_js', true );
+    $data_url = get_post_meta( $id, '_gv_data_url', true );
+    $palette  = get_post_meta( $id, '_gv_palette', true );
+    $type     = get_post_meta( $id, '_gv_viz_type', true );
+    $customjs = get_post_meta( $id, '_gv_custom_js', true );
 
     if ( $customjs ) {
         $handle = 'gv-custom-' . $id;
@@ -144,7 +137,6 @@ function gv_shortcode( $atts ) {
     ob_start(); ?>
     <div class="gv-container" data-id="<?php echo esc_attr( $id ); ?>"
          data-url="<?php echo esc_url( $data_url ); ?>"
-         data-appscript="<?php echo esc_url( $appscript ); ?>"
          data-type="<?php echo esc_attr( $type ); ?>"
          data-palette="<?php echo esc_attr( $palette ); ?>"></div>
     <?php
