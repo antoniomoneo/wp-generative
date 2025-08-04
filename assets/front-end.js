@@ -6,7 +6,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   const containers = document.querySelectorAll('.gv-container');
   containers.forEach(async el => {
-    const dataUrl = el.dataset.appscript || el.dataset.url;
+    const dataUrl = el.dataset.url;
     let paletteAttr = el.dataset.palette;
     let palette = [];
     try { palette = paletteAttr ? JSON.parse(paletteAttr) : []; } catch(e) {}
