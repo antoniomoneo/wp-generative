@@ -52,7 +52,6 @@ function gv_render_metabox( $post ) {
     $palette   = get_post_meta( $post->ID, '_gv_palette', true );
     $type      = get_post_meta( $post->ID, '_gv_viz_type', true );
     $appscript = get_post_meta( $post->ID, '_gv_appscript_url', true );
-    $customjs  = get_post_meta( $post->ID, '_gv_custom_js', true );
 
     ?>
     <p>
@@ -76,10 +75,6 @@ function gv_render_metabox( $post ) {
         </select>
     </p>
     <p>
-        <label>Script de dibujo personalizado (URL):</label>
-        <input type="url" name="gv_custom_js" value="<?php echo esc_url( $customjs ); ?>" />
-    </p>
-    <p>
         <label>Paleta de colores (JSON o lista):</label>
         <input type="text" name="gv_palette" value="<?php echo esc_attr( $palette ); ?>" />
     </p>
@@ -99,7 +94,6 @@ function gv_save_metabox( $post_id ) {
     update_post_meta( $post_id, '_gv_palette', sanitize_text_field( $_POST['gv_palette'] ?? '' ) );
     update_post_meta( $post_id, '_gv_viz_type', sanitize_text_field( $_POST['gv_viz_type'] ?? 'skeleton' ) );
     update_post_meta( $post_id, '_gv_appscript_url', esc_url_raw( $_POST['gv_appscript_url'] ?? '' ) );
-    update_post_meta( $post_id, '_gv_custom_js', esc_url_raw( $_POST['gv_custom_js'] ?? '' ) );
 }
 add_action( 'save_post', 'gv_save_metabox' );
 
@@ -134,12 +128,6 @@ function gv_shortcode( $atts ) {
     $palette   = get_post_meta( $id, '_gv_palette', true );
     $type      = get_post_meta( $id, '_gv_viz_type', true );
     $appscript = get_post_meta( $id, '_gv_appscript_url', true );
-    $customjs  = get_post_meta( $id, '_gv_custom_js', true );
-
-    if ( $customjs ) {
-        $handle = 'gv-custom-' . $id;
-        wp_enqueue_script( $handle, esc_url( $customjs ), [ 'gv-front' ], null, true );
-    }
 
     ob_start(); ?>
     <div class="gv-container" data-id="<?php echo esc_attr( $id ); ?>"
