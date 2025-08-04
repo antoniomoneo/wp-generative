@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>Esqueleto Climático con D3.js v7</title>
+  <!-- Cargar librerías de D3.js v7 -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://d3js.org/d3-scale-chromatic.v3.min.js"></script>
+  <!-- Cargar librería para crear GIFs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      background-color: #1a1a1a;
+      color: #e0e0e0;
+      margin: 0;
+      padding: 20px;
+    }
+    #chart-container {
+      background-color: #2b2b2b;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      padding: 20px;
+      text-align: center;
+    }
+    .rib {
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+    }
+    .spine {
+        stroke: #666;
+        stroke-width: 3;
+    }
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+    }
+    .btn {
+      background-color: #8a6d3b; /* Tono más orgánico */
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s;
+    }
+    .btn:hover {
+      background-color: #66512c;
+    }
+    .btn:disabled {
+      background-color: #555;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 15px;
+      font-size: 1em;
+      color: #ffc107;
+      height: 20px;
+    }
+    #embed-modal {
+      display: none; position: fixed; z-index: 100; left: 0; top: 0;
+      width: 100%; height: 100%; background-color: rgba(0,0,0,0.6);
+      justify-content: center; align-items: center;
+    }
+    .modal-content {
+      background-color: #333; padding: 25px; border-radius: 8px;
+      width: 80%; max-width: 600px; text-align: left;
+    }
+    #embed-code {
+      width: 100%; background-color: #222; color: #eee; border: 1px solid #555;
+      border-radius: 4px; padding: 10px; margin-top: 10px; box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div id="chart-container">
+    <h2 style="text-align: center;">Esqueleto Climático: Visualización Generativa de Datos</h2>
+    <div id="loading">Cargando datos y construyendo esqueleto...</div>
+    <div id="error" style="color: red;"></div>
+    <svg id="chart"></svg>
+    <div id="legend-container" style="width: 100%; display: flex; justify-content: center; margin-top: 10px;"></div>
+  </div>
+
+  <div class="controls">
+    <button id="embed-btn" class="btn">Embeber Gráfico</button>
+    <button id="gif-btn" class="btn">Descargar como GIF</button>
+  </div>
+  <div id="status"></div>
+
+  <div id="embed-modal">
+    <div class="modal-content">
+      <h3>Código para Embeber</h3>
+      <p>Copia y pega este código en tu página web:</p>
+      <textarea id="embed-code" rows="4" readonly></textarea>
+      <button id="close-modal-btn" class="btn" style="margin-top: 15px;">Cerrar</button>
+    </div>
+  </div>
+
+  <script>
+    const svgNode = document.getElementById('chart');
+    const statusDiv = document.getElementById('status');
+    const gifBtn = document.getElementById('gif-btn');
+    const embedBtn = document.getElementById('embed-btn');
+    const embedModal = document.getElementById('embed-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const embedCodeTextarea = document.getElementById('embed-code');
+
+    // --- LÓGICA DE EMBEBIDO (SIN CAMBIOS) ---
+    embedBtn.addEventListener('click', () => {
+      statusDiv.textContent = 'Obteniendo URL...';
+      google.script.run
+        .withSuccessHandler(url => {
+          embedCodeTextarea.value = `<iframe src="${url}" width="940" height="650" style="border:none;"></iframe>`;
+          embedModal.style.display = 'flex';
+          statusDiv.textContent = '';
+        })
+        .withFailureHandler(() => statusDiv.textContent = 'Error al obtener la URL.')
+        .getWebAppUrl();
+    });
+    closeModalBtn.addEventListener('click', () => embedModal.style.display = 'none');
+    
+    // --- LÓGICA DE GRABACIÓN DE GIF (ROBUSTA Y SINCRONIZADA) ---
+    let isRecording = false;
+    let gifRecorder = null;
+    let framesToCapture = 0;
+    let framesCaptured = 0;
+    const frameRate = 20;
+    const frameDelay = 1000 / frameRate;
+    const captureCanvas = document.createElement('canvas');
+    const captureCtx = captureCanvas.getContext('2d');
+
+    gifBtn.addEventListener('click', () => {
+      if (isRecording) return;
+      startRecording(5);
+    });
+
+    function startRecording(durationSeconds) {
+      gifBtn.disabled = true;
+      embedBtn.disabled = true;
+      statusDiv.textContent = 'Iniciando grabación...';
+
+      const width = svgNode.getBoundingClientRect().width;
+      const height = svgNode.getBoundingClientRect().height;
+      captureCanvas.width = width;
+      captureCanvas.height = height;
+
+      gifRecorder = new GIF({
+        workers: 2, quality: 10, width: width, height: height,
+        workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'
+      });
+
+      gifRecorder.on('finished', function(blob) {
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(blob);
+        downloadLink.download = 'esqueleto-climatico.gif';
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        statusDiv.textContent = '¡GIF descargado!';
+        gifBtn.disabled = false;
+        embedBtn.disabled = false;
+        setTimeout(() => statusDiv.textContent = '', 3000);
+      });
+
+      framesToCapture = durationSeconds * frameRate;
+      framesCaptured = 0;
+      isRecording = true; // La bandera que activará la captura dentro del bucle de D3
+    }
+    
+    function captureFrame() {
+      if (!isRecording) return;
+      if (framesCaptured >= framesToCapture) {
+        if(isRecording) { // Solo renderizar una vez
+            isRecording = false;
+            statusDiv.textContent = 'Procesando GIF... Esto puede tardar un momento.';
+            gifRecorder.render();
+        }
+        return;
+      }
+
+      statusDiv.textContent = `Grabando... ${Math.round((framesCaptured / framesToCapture) * 100)}%`;
+      
+      const style = document.createElement('style');
+      style.textContent = `.rib { fill: none; stroke-width: 2.5; stroke-linecap: round; } .spine { stroke: #666; stroke-width: 3; }`;
+      const svgClone = svgNode.cloneNode(true);
+      svgClone.insertBefore(style, svgClone.firstChild);
+      
+      const svgString = new XMLSerializer().serializeToString(svgClone);
+      const img = new Image();
+      const svgUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgString);
+
+      img.onload = function() {
+        captureCtx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
+        captureCtx.drawImage(img, 0, 0);
+        gifRecorder.addFrame(captureCtx, {copy: true, delay: frameDelay});
+        framesCaptured++;
+      };
+      img.src = svgUrl;
+    }
+
+    // --- CÓDIGO DE VISUALIZACIÓN (D3 v7) ---
+    function drawSkeletonArt(data) {
+      const margin = { top: 40, right: 40, bottom: 40, left: 40 };
+      const width = 900 - margin.left - margin.right;
+      const height = 450 - margin.top - margin.bottom;
+
+      const svg = d3.select("#chart")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const xScale = d3.scalePoint().domain(data.map(d => d.year)).range([0, width]).padding(0.5);
+      const meanExtent = d3.extent(data, d => Math.abs(d.mean));
+      const ribLengthScale = d3.scaleLinear().domain(meanExtent).range([10, 80]);
+      const movAvgExtent = d3.extent(data, d => d.movAvg);
+      const colorScale = d3.scaleSequential(d3.interpolateMagma).domain(movAvgExtent);
+
+      svg.append("line")
+        .attr("class", "spine").attr("x1", 0).attr("y1", height / 2)
+        .attr("x2", width).attr("y2", height / 2);
+
+      const yearGroup = svg.selectAll(".year-group").data(data).enter().append("g")
+        .attr("class", "year-group")
+        .attr("transform", d => `translate(${xScale(d.year)}, ${height / 2})`);
+
+      const ribGenerator = d3.line().curve(d3.curveBasis);
+      yearGroup.append("path").attr("class", "rib rib-top");
+      yearGroup.append("path").attr("class", "rib rib-bottom");
+      
+      // Asignar el color una sola vez (más eficiente)
+      yearGroup.selectAll(".rib").attr("stroke", d => colorScale(d.movAvg));
+
+      const animationSpeed = 0.001;
+      let lastCaptureTime = -Infinity;
+
+      d3.timer(function(elapsed) {
+        // 1. La animación se ejecuta siempre
+        const breath = (Math.sin(elapsed * animationSpeed) + 1) / 2 * 0.25 + 0.85;
+        yearGroup.select(".rib-top").attr("d", d => {
+            const length = ribLengthScale(Math.abs(d.mean)) * breath;
+            return ribGenerator([ [0, 0], [length, -length * 0.8], [0, -length * 1.5] ]);
+        });
+        yearGroup.select(".rib-bottom").attr("d", d => {
+            const length = ribLengthScale(Math.abs(d.mean)) * breath;
+            return ribGenerator([ [0, 0], [length, length * 0.8], [0, length * 1.5] ]);
+        });
+
+        // 2. La captura solo se ejecuta si está activa y ha pasado el tiempo necesario
+        if (isRecording && (elapsed - lastCaptureTime >= frameDelay)) {
+          lastCaptureTime = elapsed;
+          captureFrame();
+        }
+      });
+
+      drawLegend(movAvgExtent, colorScale, data);
+    }
+    
+    function drawLegend(domain, scale, data) {
+        const legendWidth = 300; const legendHeight = 10;
+        const legendSvg = d3.select("#legend-container").append("svg")
+            .attr("width", legendWidth + 40).attr("height", legendHeight + 40)
+            .append("g").attr("transform", "translate(20, 10)");
+        const defs = legendSvg.append("defs");
+        const linearGradient = defs.append("linearGradient").attr("id", "linear-gradient");
+        
+        const colorScaleForLegend = d3.scaleLinear().domain([0, 1]).range(domain);
+        linearGradient.selectAll("stop")
+            .data(d3.range(10).map(i => i / 9))
+            .enter().append("stop")
+            .attr("offset", d => `${d * 100}%`)
+            .attr("stop-color", d => scale(colorScaleForLegend(d)));
+
+        legendSvg.append("rect").attr("width", legendWidth).attr("height", legendHeight).style("fill", "url(#linear-gradient)");
+        const legendScale = d3.scaleLinear().domain(domain).range([0, legendWidth]);
+        const legendAxis = d3.axisBottom(legendScale).ticks(5).tickFormat(d => d.toFixed(2) + "°C");
+        legendSvg.append("g").attr("transform", `translate(0, ${legendHeight})`).call(legendAxis)
+            .selectAll("text").style("fill", "#e0e0e0");
+        legendSvg.selectAll(".domain, .tick line").attr("stroke", "#e0e0e0");
+    }
+
+    // --- LÓGICA DE CARGA DE DATOS ---
+    function onDataLoaded(data) {
+      document.getElementById('loading').style.display = 'none';
+      if (data.error || !data || data.length === 0) {
+        document.getElementById('error').innerText = (data && data.error) || 'No se encontraron datos o están en formato incorrecto.';
+        return;
+      }
+      drawSkeletonArt(data);
+    }
+
+    function onDataError(error) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').innerText = 'Error al cargar el script: ' + error.message;
+    }
+
+    google.script.run
+      .withSuccessHandler(onDataLoaded)
+      .withFailureHandler(onDataError)
+      .getSheetData();
+  </script>
+</body>
+</html>
