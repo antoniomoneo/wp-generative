@@ -62,7 +62,11 @@ function gv_render_metabox( $post ) {
     ?>
     <p>
         <label>Slug:</label>
-        <input type="text" name="gv_slug" value="<?php echo esc_attr( $slug ); ?>" />
+        <input type="text" name="gv_slug" id="gv-slug-field" value="<?php echo esc_attr( $slug ); ?>" />
+    </p>
+    <p>
+        <label>Código corto:</label>
+        <code id="gv-shortcode">[gv slug="<?php echo esc_attr( $slug ); ?>"]</code>
     </p>
     <p>
         <label>URL de datos (JSON/CSV):</label>

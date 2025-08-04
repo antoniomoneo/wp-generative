@@ -22,32 +22,49 @@ document.addEventListener('DOMContentLoaded', () => {
       palette = [bodyColor];
     }
     preview.innerHTML = '';
-    if (!url) return;
-    let data;
-    if (url.toLowerCase().endsWith('.csv')) {
-      data = await d3.csv(url, d3.autoType);
-    } else {
-      data = await fetch(url).then(r => r.json());
+    if (!url) {
+      preview.innerHTML = '<p>Introduce una URL de datos para ver la vista previa.</p>';
+      return;
     }
-    const type = typeField.value || 'skeleton';
+    try {
+      let data;
+      if (url.toLowerCase().endsWith('.csv')) {
+        data = await d3.csv(url, d3.autoType);
+      } else {
+        data = await fetch(url).then(r => r.json());
+      }
+      const type = typeField.value || 'skeleton';
 
-    switch(type) {
-      case 'circles':
-        drawCircles(preview, data, palette);
-        break;
-      case 'bars':
-        drawBars(preview, data, palette);
-        break;
-      default:
-        drawSkeletonPreview(preview, data);
+      switch(type) {
+        case 'circles':
+          drawCircles(preview, data, palette);
+          break;
+        case 'bars':
+          drawBars(preview, data, palette);
+          break;
+        default:
+          drawSkeletonPreview(preview, data);
+      }
+    } catch(err) {
+      preview.innerHTML = '<p>No se pudo cargar la vista previa.</p>';
+      console.error(err);
     }
   };
 
   const urlField = document.querySelector('input[name="gv_data_url"]');
   const paletteField = document.querySelector('select[name="gv_palette"]');
   const typeField = document.querySelector('select[name="gv_viz_type"]');
+  const slugField = document.querySelector('input[name="gv_slug"]');
+  const shortcodeEl = document.getElementById('gv-shortcode');
+  const updateShortcode = () => {
+    if (shortcodeEl) {
+      shortcodeEl.textContent = `[gv slug="${slugField.value.trim()}"]`;
+    }
+  };
   [urlField, typeField].forEach(f=>f.addEventListener('input', render));
   paletteField.addEventListener('change', render);
+  slugField.addEventListener('input', updateShortcode);
+  updateShortcode();
   render();
 });
 
