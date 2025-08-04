@@ -7,7 +7,14 @@
  * Author:      KGMT Knowledge Services
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if ( defined( 'GV_PLUGIN_VERSION' ) ) {
+    return;
+}
+define( 'GV_PLUGIN_VERSION', '0.1.0' );
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
 function gv_register_cpt() {
     $labels = [
