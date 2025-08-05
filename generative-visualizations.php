@@ -82,6 +82,8 @@ function gv_render_metabox( $post ) {
             <option value="skeleton" <?php selected( $type, 'skeleton' ); ?>>Skeleton</option>
             <option value="circles" <?php selected( $type, 'circles' ); ?>>Círculos</option>
             <option value="bars" <?php selected( $type, 'bars' ); ?>>Barras</option>
+            <option value="orbitalRings" <?php selected( $type, 'orbitalRings' ); ?>>Anillos Orbitales (P5)</option>
+            <option value="flowField" <?php selected( $type, 'flowField' ); ?>>Campo de Flujo (P5)</option>
         </select>
     </p>
     <p>

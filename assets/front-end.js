@@ -33,7 +33,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (library === 'p5') {
-      drawP5(el, data, palette);
+      switch(type) {
+        case 'orbitalRings':
+          drawOrbitalRings(el, data, palette);
+          break;
+        case 'flowField':
+          drawFlowField(el, data, palette);
+          break;
+        default:
+          drawP5(el, data, palette);
+      }
       return;
     }
 
@@ -43,6 +52,12 @@ document.addEventListener('DOMContentLoaded', () => {
         break;
       case 'bars':
         drawBars(el, data, palette);
+        break;
+      case 'orbitalRings':
+        drawOrbitalRings(el, data, palette);
+        break;
+      case 'flowField':
+        drawFlowField(el, data, palette);
         break;
       default:
         drawSkeleton(el, data);
@@ -74,8 +89,103 @@ function drawBars(el, data, palette) {
     .attr('fill',(d,i)=>palette[i%palette.length]);
 }
 
+function drawOrbitalRings(el, data, palette) {
+  const container = document.createElement('div');
+  el.appendChild(container);
+
+  new p5(p => {
+    let maxVal;
+
+    p.setup = function() {
+      p.createCanvas(400, 400);
+      p.background('#1a1a1a');
+      p.noFill();
+      p.strokeWeight(1.5);
+
+      const values = data.map(d => Math.abs(d.valor || d.mean || d.Anomaly || 0));
+      maxVal = p.max(values);
+
+      const centerX = p.width / 2;
+      const centerY = p.height / 2;
+      const maxRadius = p.min(centerX, centerY) * 0.9;
+
+      data.forEach((d, i) => {
+        const value = Math.abs(d.valor || d.mean || d.Anomaly || 0);
+        const radius = p.map(i, 0, data.length, 10, maxRadius);
+        const color = p.color(palette[i % palette.length]);
+        p.stroke(color);
+        const perturbation = p.map(value, 0, maxVal, 0, 30);
+
+        p.beginShape();
+        for (let angle = 0; angle < 360; angle += 4) {
+          const noiseFactor = p.noise(i * 10, angle * 0.1);
+          const r = radius + p.map(noiseFactor, 0, 1, -perturbation, perturbation);
+          const x = centerX + r * p.cos(p.radians(angle));
+          const y = centerY + r * p.sin(p.radians(angle));
+          p.vertex(x, y);
+        }
+        p.endShape(p.CLOSE);
+      });
+    };
+  }, container);
+}
+
+function drawFlowField(el, data, palette) {
+  const container = document.createElement('div');
+  el.appendChild(container);
+
+  new p5(p => {
+    let particles = [];
+    const numParticles = 1500;
+    const noiseScale = 0.01;
+
+    p.setup = function() {
+      p.createCanvas(400, 400);
+      p.background('#f5f5f5');
+
+      for (let i = 0; i < numParticles; i++) {
+        particles.push({
+          pos: p.createVector(p.random(p.width), p.random(p.height)),
+          vel: p.createVector(0, 0),
+          acc: p.createVector(0, 0),
+          maxSpeed: p.random(1, 3),
+          color: p.color(palette[i % palette.length]),
+        });
+      }
+      p.noLoop();
+      p.draw();
+    };
+
+    p.draw = function() {
+      for (let i = 0; i < 200; i++) {
+        particles.forEach((particle, index) => {
+          const dataInfluence = p.map(data[index % data.length].movAvg || 0, -1, 1, -0.5, 0.5);
+          const angle = p.noise(particle.pos.x * noiseScale, particle.pos.y * noiseScale) * p.TWO_PI * 2 + dataInfluence;
+
+          particle.acc.add(p.createVector(p.cos(angle), p.sin(angle)));
+
+          particle.vel.add(particle.acc);
+          particle.vel.limit(particle.maxSpeed);
+          particle.pos.add(particle.vel);
+          particle.acc.mult(0);
+
+          particle.color.setAlpha(10);
+          p.stroke(particle.color);
+          p.point(particle.pos.x, particle.pos.y);
+
+          if (particle.pos.x > p.width) particle.pos.x = 0;
+          if (particle.pos.x < 0) particle.pos.x = p.width;
+          if (particle.pos.y > p.height) particle.pos.y = 0;
+          if (particle.pos.y < 0) particle.pos.y = p.height;
+        });
+      }
+    };
+  }, container);
+}
+
 // Skeleton visualization with animation and GIF capture
 function drawSkeleton(el, data) {
+  d3.select(el).style('background-color', '#1a1a1a').style('padding', '20px');
   const width = 900, height = 450;
   const svg = d3.select(el).append('svg')
     .attr('width', width)
@@ -94,6 +204,7 @@ function drawSkeleton(el, data) {
 
   g.append('line')
     .attr('class','spine')
+    .attr('stroke', '#666')
     .attr('x1',0).attr('y1',innerH/2)
     .attr('x2',innerW).attr('y2',innerH/2);
 
@@ -108,6 +219,7 @@ function drawSkeleton(el, data) {
 
   const animationSpeed = 0.001;
   d3.timer(function(elapsed){
+    yearGroup.selectAll('.rib').attr('stroke', d => colorScale(d.movAvg));
     const breath = (Math.sin(elapsed*animationSpeed)+1)/2*0.25+0.85;
     yearGroup.select('.rib-top').attr('d',d=>{
       const length = ribLengthScale(Math.abs(d.mean))*breath;
@@ -232,6 +344,8 @@ function drawLegend(container, domain, scale){
   legendSvg.append('rect').attr('width',legendWidth).attr('height',legendHeight).style('fill','url(#gv-gradient)');
   const legendScale = d3.scaleLinear().domain(domain).range([0,legendWidth]);
   const legendAxis = d3.axisBottom(legendScale).ticks(5).tickFormat(d=>d.toFixed(2)+"°C");
-  legendSvg.append('g').attr('transform',`translate(0,${legendHeight})`).call(legendAxis);
+  legendSvg.append('g').attr('transform',`translate(0,${legendHeight})`).call(legendAxis)
+      .selectAll("text").style("fill", "#e0e0e0");
+  legendSvg.selectAll(".domain, .tick line").attr("stroke", "#e0e0e0");
 }
 
