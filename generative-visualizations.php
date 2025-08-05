@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Generative Visualizations
  * Description: Crea y gestiona visualizaciones generativas con D3.js o P5.js.
- * Version:     0.1.1
+ * Version:     0.2.0
  * Requires at least: 5.0
  * Author:      KGMT Knowledge Services
  */
@@ -10,7 +10,7 @@
 if ( defined( 'GV_PLUGIN_VERSION' ) ) {
     return;
 }
-define( 'GV_PLUGIN_VERSION', '0.1.1' );
+define( 'GV_PLUGIN_VERSION', '0.2.0' );
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -43,6 +43,9 @@ function gv_register_cpt() {
     ];
 
     register_post_type( 'visualization', $args );
+
+    // Allow categories for media attachments so saved images can be categorized.
+    register_taxonomy_for_object_type( 'category', 'attachment' );
 }
 add_action( 'init', 'gv_register_cpt' );
 
@@ -58,6 +61,7 @@ function gv_render_metabox( $post ) {
     $data     = get_post_meta( $post->ID, '_gv_data_url', true );
     $palette  = get_post_meta( $post->ID, '_gv_palette', true );
     $type     = get_post_meta( $post->ID, '_gv_viz_type', true );
+    $library  = get_post_meta( $post->ID, '_gv_library', true );
 
     ?>
     <p>
@@ -80,6 +84,13 @@ function gv_render_metabox( $post ) {
             <option value="bars" <?php selected( $type, 'bars' ); ?>>Barras</option>
         </select>
     </p>
+    <p>
+        <label>Biblioteca:</label>
+        <select name="gv_library">
+            <option value="d3" <?php selected( $library, 'd3' ); ?>>D3.js</option>
+            <option value="p5" <?php selected( $library, 'p5' ); ?>>P5.js</option>
+        </select>
+    </p>
     <?php $palettes = gv_get_available_palettes(); ?>
     <p>
         <label>Paleta de colores:</label>
@@ -92,6 +103,11 @@ function gv_render_metabox( $post ) {
     </p>
     <p>Vista previa:</p>
     <div id="gv-preview"></div>
+    <p>
+        <button type="button" id="gv-regenerate">Regenerar</button>
+        <button type="button" id="gv-save-media">Guardar en Media</button>
+        <span id="gv-status"></span>
+    </p>
     <?php
 }
 
@@ -105,6 +121,7 @@ function gv_save_metabox( $post_id ) {
     update_post_meta( $post_id, '_gv_data_url', esc_url_raw( $_POST['gv_data_url'] ?? '' ) );
     update_post_meta( $post_id, '_gv_palette', sanitize_text_field( $_POST['gv_palette'] ?? '' ) );
     update_post_meta( $post_id, '_gv_viz_type', sanitize_text_field( $_POST['gv_viz_type'] ?? 'skeleton' ) );
+    update_post_meta( $post_id, '_gv_library', sanitize_text_field( $_POST['gv_library'] ?? 'd3' ) );
 }
 add_action( 'save_post', 'gv_save_metabox' );
 
@@ -138,11 +155,13 @@ function gv_shortcode( $atts ) {
     $data_url = get_post_meta( $id, '_gv_data_url', true );
     $palette  = get_post_meta( $id, '_gv_palette', true );
     $type     = get_post_meta( $id, '_gv_viz_type', true );
+    $library  = get_post_meta( $id, '_gv_library', true );
 
     ob_start(); ?>
     <div class="gv-container" data-id="<?php echo esc_attr( $id ); ?>"
          data-url="<?php echo esc_url( $data_url ); ?>"
          data-type="<?php echo esc_attr( $type ); ?>"
+         data-library="<?php echo esc_attr( $library ); ?>"
          data-palette="<?php echo esc_attr( $palette ); ?>"></div>
     <?php
     return ob_get_clean();
@@ -170,8 +189,9 @@ function gv_enqueue_scripts() {
     if ( ! is_admin() ) {
         wp_enqueue_script( 'd3', 'https://d3js.org/d3.v7.min.js', [], null, true );
         wp_enqueue_script( 'd3-scale-chromatic', 'https://d3js.org/d3-scale-chromatic.v3.min.js', [ 'd3' ], null, true );
+        wp_enqueue_script( 'p5', 'https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js', [], null, true );
         wp_enqueue_script( 'gifjs', 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js', [], null, true );
-        wp_enqueue_script( 'gv-front', plugin_dir_url(__FILE__) . 'assets/front-end.js', [ 'd3', 'd3-scale-chromatic', 'gifjs' ], GV_PLUGIN_VERSION, true );
+        wp_enqueue_script( 'gv-front', plugin_dir_url(__FILE__) . 'assets/front-end.js', [ 'd3', 'd3-scale-chromatic', 'gifjs', 'p5' ], GV_PLUGIN_VERSION, true );
         wp_localize_script( 'gv-front', 'gvSettings', [ 'palette' => gv_get_theme_palette() ] );
         wp_enqueue_style( 'gv-style', plugin_dir_url(__FILE__) . 'assets/style.css', [], GV_PLUGIN_VERSION );
     }
@@ -188,8 +208,43 @@ function gv_enqueue_admin_scripts( $hook ) {
     }
     wp_enqueue_script( 'd3', 'https://d3js.org/d3.v7.min.js', [], null, true );
     wp_enqueue_script( 'd3-scale-chromatic', 'https://d3js.org/d3-scale-chromatic.v3.min.js', [ 'd3' ], null, true );
-    wp_enqueue_script( 'gv-admin', plugin_dir_url(__FILE__) . 'assets/admin-preview.js', [ 'd3', 'd3-scale-chromatic' ], GV_PLUGIN_VERSION, true );
+    wp_enqueue_script( 'p5', 'https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js', [], null, true );
+    wp_enqueue_script( 'gv-admin', plugin_dir_url(__FILE__) . 'assets/admin-preview.js', [ 'd3', 'd3-scale-chromatic', 'p5' ], GV_PLUGIN_VERSION, true );
     wp_localize_script( 'gv-admin', 'gvSettings', [ 'palette' => gv_get_theme_palette() ] );
 }
 add_action( 'admin_enqueue_scripts', 'gv_enqueue_admin_scripts' );
+
+function gv_save_image_ajax() {
+    if ( ! current_user_can( 'upload_files' ) ) {
+        wp_send_json_error( 'permission' );
+    }
+    $image = $_POST['image'] ?? '';
+    if ( ! $image ) {
+        wp_send_json_error( 'no_image' );
+    }
+    $parts = explode( ',', $image );
+    $data  = base64_decode( end( $parts ) );
+    $filename = 'visualizacion-' . time() . '.png';
+    $upload = wp_upload_bits( $filename, null, $data );
+    if ( $upload['error'] ) {
+        wp_send_json_error( 'upload_error' );
+    }
+    $filetype = wp_check_filetype( $filename, null );
+    $attachment = [
+        'post_mime_type' => $filetype['type'],
+        'post_title'     => sanitize_file_name( $filename ),
+        'post_content'   => '',
+        'post_status'    => 'inherit',
+    ];
+    $attach_id = wp_insert_attachment( $attachment, $upload['file'] );
+    require_once ABSPATH . 'wp-admin/includes/image.php';
+    $attach_data = wp_generate_attachment_metadata( $attach_id, $upload['file'] );
+    wp_update_attachment_metadata( $attach_id, $attach_data );
+    if ( ! term_exists( 'visualizaciones', 'category' ) ) {
+        wp_insert_term( 'visualizaciones', 'category' );
+    }
+    wp_set_object_terms( $attach_id, 'visualizaciones', 'category', true );
+    wp_send_json_success( [ 'id' => $attach_id ] );
+}
+add_action( 'wp_ajax_gv_save_image', 'gv_save_image_ajax' );
 

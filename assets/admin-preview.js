@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlField = document.querySelector('input[name="gv_data_url"]');
     const paletteField = document.querySelector('select[name="gv_palette"]');
     const typeField = document.querySelector('select[name="gv_viz_type"]');
+    const libraryField = document.querySelector('select[name="gv_library"]');
     const url = urlField.value;
     let paletteAttr = paletteField.value;
     let palette = [];
@@ -34,16 +35,21 @@ document.addEventListener('DOMContentLoaded', () => {
         data = await fetch(url).then(r => r.json());
       }
       const type = typeField.value || 'skeleton';
+      const library = libraryField.value || 'd3';
 
-      switch(type) {
-        case 'circles':
-          drawCircles(preview, data, palette);
-          break;
-        case 'bars':
-          drawBars(preview, data, palette);
-          break;
-        default:
-          drawSkeletonPreview(preview, data);
+      if (library === 'p5') {
+        drawP5Preview(preview, data, palette);
+      } else {
+        switch(type) {
+          case 'circles':
+            drawCircles(preview, data, palette);
+            break;
+          case 'bars':
+            drawBars(preview, data, palette);
+            break;
+          default:
+            drawSkeletonPreview(preview, data);
+        }
       }
     } catch(err) {
       preview.innerHTML = '<p>No se pudo cargar la vista previa.</p>';
@@ -54,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const urlField = document.querySelector('input[name="gv_data_url"]');
   const paletteField = document.querySelector('select[name="gv_palette"]');
   const typeField = document.querySelector('select[name="gv_viz_type"]');
+  const libraryField = document.querySelector('select[name="gv_library"]');
   const slugField = document.querySelector('input[name="gv_slug"]');
   const shortcodeEl = document.getElementById('gv-shortcode');
   const updateShortcode = () => {
@@ -61,11 +68,29 @@ document.addEventListener('DOMContentLoaded', () => {
       shortcodeEl.textContent = `[gv slug="${slugField.value.trim()}"]`;
     }
   };
-  [urlField, typeField].forEach(f=>f.addEventListener('input', render));
+  [urlField, typeField, libraryField].forEach(f=>f.addEventListener('input', render));
   paletteField.addEventListener('change', render);
   slugField.addEventListener('input', updateShortcode);
   updateShortcode();
   render();
+  const saveBtn = document.getElementById('gv-save-media');
+  const regenBtn = document.getElementById('gv-regenerate');
+  const status = document.getElementById('gv-status');
+  if (regenBtn) regenBtn.addEventListener('click', render);
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      status.textContent = 'Guardando...';
+      const img = await captureImage();
+      if(!img){ status.textContent=''; return; }
+      const body = new FormData();
+      body.append('action','gv_save_image');
+      body.append('image', img);
+      fetch(window.ajaxurl, {method:'POST', body}).then(r=>r.json()).then(res=>{
+        status.textContent = res.success ? 'Guardado' : 'Error';
+        setTimeout(()=>status.textContent='',2000);
+      }).catch(()=>{status.textContent='Error'; setTimeout(()=>status.textContent='',2000);});
+    });
+  }
 });
 
 function drawCircles(el, data, palette) {
@@ -131,5 +156,54 @@ function drawSkeletonPreview(el, data) {
       return ribGenerator([[0,0],[length,length*0.8],[0,length*1.5]]);
     });
   });
+}
+
+function drawP5Preview(el, data, palette){
+  const container = document.createElement('div');
+  el.appendChild(container);
+  new p5(p=>{
+    p.setup = function(){
+      p.createCanvas(300,200);
+      p.noLoop();
+    };
+    p.draw = function(){
+      p.background(255);
+      p.stroke(palette[0] || '#000');
+      p.noFill();
+      p.beginShape();
+      const step = p.width/(data.length-1);
+      data.forEach((d,i)=>{
+        const v = d.valor || d.mean || d.Anomaly || 0;
+        const x = i*step;
+        const y = p.height/2 - v*20 + p.random(-5,5);
+        p.vertex(x,y);
+      });
+      p.endShape();
+    };
+  }, container);
+}
+
+async function captureImage(){
+  const svg = document.querySelector('#gv-preview svg');
+  if(svg){
+    const canvas = document.createElement('canvas');
+    canvas.width = svg.viewBox.baseVal.width || svg.width.baseVal.value;
+    canvas.height = svg.viewBox.baseVal.height || svg.height.baseVal.value;
+    const ctx = canvas.getContext('2d');
+    const data = new XMLSerializer().serializeToString(svg);
+    const img = new Image();
+    return new Promise(resolve=>{
+      img.onload = function(){
+        ctx.drawImage(img,0,0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(data);
+    });
+  }
+  const canvas = document.querySelector('#gv-preview canvas');
+  if(canvas){
+    return canvas.toDataURL('image/png');
+  }
+  return null;
 }
 
