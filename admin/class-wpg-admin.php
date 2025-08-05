@@ -1,0 +1,192 @@
+<?php
+defined( 'ABSPATH' ) || exit;
+
+class WPG_Admin {
+    private static $instance = null;
+
+    private function __construct() {
+        add_action( 'admin_menu', [ $this, 'register_menu' ] );
+        add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+        add_action( 'wp_ajax_wpg_generate_code', [ $this, 'ajax_generate_code' ] );
+        add_action( 'wp_ajax_wpg_save_visualization', [ $this, 'ajax_save_visualization' ] );
+    }
+
+    public static function get_instance() {
+        return self::$instance ?: self::$instance = new self();
+    }
+
+    public function register_menu() {
+        add_menu_page(
+            __( 'Gen Viz', 'wpg' ),
+            __( 'Gen Viz', 'wpg' ),
+            'manage_options',
+            'wpg-gen-viz',
+            [ $this, 'render_connection_page' ],
+            'dashicons-admin-site',
+            25
+        );
+
+        add_submenu_page(
+            'wpg-gen-viz',
+            __( 'Conexión con OpenAI', 'wpg' ),
+            __( 'Conexión', 'wpg' ),
+            'manage_options',
+            'wpg-gen-viz',
+            [ $this, 'render_connection_page' ]
+        );
+        add_submenu_page(
+            'wpg-gen-viz',
+            __( 'Sandbox', 'wpg' ),
+            __( 'Sandbox', 'wpg' ),
+            'manage_options',
+            'wpg-sandbox',
+            [ $this, 'render_sandbox_page' ]
+        );
+        add_submenu_page(
+            'wpg-gen-viz',
+            __( 'Librería', 'wpg' ),
+            __( 'Librería', 'wpg' ),
+            'manage_options',
+            'wpg-library',
+            [ $this, 'render_library_page' ]
+        );
+    }
+
+    public function enqueue_assets( $hook ) {
+        if ( 'wpg-gen-viz_page_wpg-sandbox' !== $hook ) {
+            return;
+        }
+        wp_enqueue_script(
+            'p5',
+            plugin_dir_url( __FILE__ ) . '../assets/js/p5.min.js',
+            [],
+            '1.9.0',
+            true
+        );
+        wp_enqueue_script(
+            'wpg-admin-js',
+            plugin_dir_url( __FILE__ ) . 'js/wpg-admin.js',
+            [ 'jquery', 'p5' ],
+            '1.1.0',
+            true
+        );
+        wp_localize_script( 'wpg-admin-js', 'WPG_Ajax', [
+            'ajax_url' => admin_url( 'admin-ajax.php' ),
+            'nonce'    => wp_create_nonce( 'wpg_nonce' ),
+        ] );
+    }
+
+    public function render_connection_page() {
+        $saved = false;
+        if ( isset( $_POST['wpg_connection_submit'] ) && check_admin_referer( 'wpg_save_connection' ) ) {
+            update_option( 'wpg_api_key', sanitize_text_field( $_POST['wpg_api_key'] ?? '' ) );
+            update_option( 'wpg_assistant_id', sanitize_text_field( $_POST['wpg_assistant_id'] ?? '' ) );
+            $saved = true;
+        }
+        $api_key     = get_option( 'wpg_api_key', '' );
+        $assistantId = get_option( 'wpg_assistant_id', '' );
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e( 'Conexión con OpenAI PLATFORM', 'wpg' ); ?></h1>
+            <?php if ( $saved ) : ?>
+                <div class="updated notice"><p><?php esc_html_e( 'Opciones guardadas.', 'wpg' ); ?></p></div>
+            <?php endif; ?>
+            <form method="post">
+                <?php wp_nonce_field( 'wpg_save_connection' ); ?>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="wpg_api_key">API Key</label></th>
+                        <td><input type="password" id="wpg_api_key" name="wpg_api_key" value="<?php echo esc_attr( $api_key ); ?>" size="40" /></td>
+                    </tr>
+                    <tr>
+                        <th><label for="wpg_assistant_id">Assistant ID</label></th>
+                        <td><input type="text" id="wpg_assistant_id" name="wpg_assistant_id" value="<?php echo esc_attr( $assistantId ); ?>" size="40" /></td>
+                    </tr>
+                </table>
+                <?php submit_button( __( 'Guardar', 'wpg' ), 'primary', 'wpg_connection_submit' ); ?>
+            </form>
+        </div>
+        <?php
+    }
+
+    public function render_sandbox_page() {
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e( 'Sandbox', 'wpg' ); ?></h1>
+            <form id="wpg-sandbox-form">
+                <p><label for="wpg_prompt"><?php esc_html_e( 'Prompt', 'wpg' ); ?></label></p>
+                <p><textarea id="wpg_prompt" rows="4" cols="50"></textarea></p>
+                <?php submit_button( __( 'Generar', 'wpg' ), 'primary', 'wpg-generate' ); ?>
+            </form>
+            <div id="wpg-controls" style="margin-top:2em;"></div>
+            <div id="wpg-preview" style="margin-top:2em;"></div>
+            <h2><?php esc_html_e( 'Guardar visualización', 'wpg' ); ?></h2>
+            <p><label for="wpg_slug">Slug</label> <input type="text" id="wpg_slug" /></p>
+            <p><button id="wpg-save" class="button button-primary"><?php esc_html_e( 'Guardar', 'wpg' ); ?></button> <span id="wpg-save-status"></span></p>
+        </div>
+        <?php
+    }
+
+    public function render_library_page() {
+        $posts = get_posts( [ 'post_type' => 'wpg_viz', 'numberposts' => -1 ] );
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e( 'Librería', 'wpg' ); ?></h1>
+            <table class="widefat">
+                <thead><tr><th><?php esc_html_e( 'Título', 'wpg' ); ?></th><th><?php esc_html_e( 'Slug', 'wpg' ); ?></th></tr></thead>
+                <tbody>
+                <?php foreach ( $posts as $p ) : ?>
+                    <tr><td><?php echo esc_html( $p->post_title ); ?></td><td><?php echo esc_html( $p->post_name ); ?></td></tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php
+    }
+
+    public function ajax_generate_code() {
+        check_ajax_referer( 'wpg_nonce' );
+
+        $api_key     = sanitize_text_field( $_POST['api_key'] ?? get_option( 'wpg_api_key', '' ) );
+        $assistantId = sanitize_text_field( $_POST['assistant_id'] ?? get_option( 'wpg_assistant_id', '' ) );
+        $prompt      = sanitize_textarea_field( $_POST['prompt'] ?? '' );
+
+        if ( ! $api_key || ! $assistantId ) {
+            wp_send_json_error( [ 'message' => __( 'Faltan credenciales.', 'wpg' ) ] );
+        }
+
+        $openai = new WPG_OpenAI( $api_key, $assistantId );
+        $code   = $openai->get_p5js_code( $prompt );
+
+        if ( is_wp_error( $code ) ) {
+            wp_send_json_error( [ 'message' => $code->get_error_message() ] );
+        }
+        wp_send_json_success( [ 'code' => $code ] );
+    }
+
+    public function ajax_save_visualization() {
+        check_ajax_referer( 'wpg_nonce' );
+
+        $slug = sanitize_title( $_POST['slug'] ?? '' );
+        $code = wp_unslash( $_POST['code'] ?? '' );
+        $prompt = sanitize_text_field( $_POST['prompt'] ?? '' );
+        if ( ! $slug || ! $code ) {
+            wp_send_json_error( [ 'message' => __( 'Datos incompletos.', 'wpg' ) ] );
+        }
+
+        $post_id = wp_insert_post( [
+            'post_type'   => 'wpg_viz',
+            'post_status' => 'publish',
+            'post_title'  => $slug,
+            'post_name'   => $slug,
+        ], true );
+        if ( is_wp_error( $post_id ) ) {
+            wp_send_json_error( [ 'message' => $post_id->get_error_message() ] );
+        }
+        update_post_meta( $post_id, '_wpg_code', $code );
+        if ( $prompt ) {
+            update_post_meta( $post_id, '_wpg_prompt', $prompt );
+        }
+        wp_send_json_success( [ 'id' => $post_id ] );
+    }
+}
