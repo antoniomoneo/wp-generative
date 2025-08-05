@@ -2,6 +2,7 @@
 Wordpress Plugin for Generative Data Art
 
 Este plugin de WordPress permite crear y gestionar visualizaciones generativas mediante D3.js o P5.js.
+Incluye una copia local de **p5.js** y un sketch de ejemplo que puede mostrarse mediante un código corto.
 
 ## Características
 - Registro de un tipo de contenido personalizado "Visualizaciones".
@@ -24,5 +25,11 @@ Cada visualización tiene un campo **Slug**. Utiliza el siguiente código corto 
 ```
 
 El panel de edición muestra el código generado para que puedas copiarlo fácilmente.
+
+Para insertar el sketch de ejemplo basado en p5.js utiliza:
+
+```
+[gv_canvas]
+```
 
 Desarrollado por KGMT Knowledge Services.
