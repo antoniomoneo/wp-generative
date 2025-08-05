@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const library = libraryField.value || 'd3';
 
       if (library === 'p5') {
+        await ensureP5();
         switch(type) {
           case 'orbitalRings':
             drawOrbitalRings(preview, data, palette);
@@ -317,5 +318,18 @@ async function captureImage(){
     return canvas.toDataURL('image/png');
   }
   return null;
+}
+
+async function ensureP5(){
+  if (typeof p5 !== 'undefined') return;
+  if (window.gvSettings && window.gvSettings.p5Url) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = window.gvSettings.p5Url;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
 }
 
