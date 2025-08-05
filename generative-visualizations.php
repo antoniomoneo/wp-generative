@@ -12,6 +12,14 @@ if ( defined( 'GV_PLUGIN_VERSION' ) ) {
 }
 define( 'GV_PLUGIN_VERSION', '0.2.0' );
 
+// Attempt to load OpenAI API key from environment if not defined.
+if ( ! defined( 'GV_OPENAI_API_KEY' ) ) {
+    $env_key = getenv( 'OPENAI_API_KEY' );
+    if ( $env_key ) {
+        define( 'GV_OPENAI_API_KEY', $env_key );
+    }
+}
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
@@ -53,6 +61,26 @@ function gv_add_metaboxes() {
     add_meta_box( 'gv_data', 'Datos y opciones', 'gv_render_metabox', 'visualization', 'normal', 'high' );
 }
 add_action( 'add_meta_boxes', 'gv_add_metaboxes' );
+
+// Sandbox page for generating custom p5 sketches via OpenAI
+function gv_add_sandbox_page() {
+    add_submenu_page( 'upload.php', 'Sandbox GV', 'Sandbox GV', 'upload_files', 'gv-sandbox', 'gv_render_sandbox_page' );
+}
+add_action( 'admin_menu', 'gv_add_sandbox_page' );
+
+function gv_render_sandbox_page() { ?>
+    <div class="wrap">
+        <h1>Sandbox Generativa</h1>
+        <p><textarea id="gv-sandbox-prompt" rows="3" style="width:100%;" placeholder="Describe la visualización..."></textarea></p>
+        <p><button id="gv-sandbox-generate" class="button">Generar</button></p>
+        <p><textarea id="gv-sandbox-code" rows="10" style="width:100%;" placeholder="// Código p5.js"></textarea></p>
+        <p><button id="gv-sandbox-run" class="button">Vista previa</button></p>
+        <div id="gv-sandbox-preview" style="border:1px solid #ccc;min-height:200px;"></div>
+        <h2>Guardar en la librería</h2>
+        <p><label>Slug: <input type="text" id="gv-sandbox-slug" /></label></p>
+        <p><button id="gv-sandbox-save" class="button button-primary">Guardar</button> <span id="gv-sandbox-status"></span></p>
+    </div>
+<?php }
 
 function gv_render_metabox( $post ) {
     wp_nonce_field( 'gv_save_metabox', 'gv_metabox_nonce' );
@@ -158,13 +186,15 @@ function gv_shortcode( $atts ) {
     $palette  = get_post_meta( $id, '_gv_palette', true );
     $type     = get_post_meta( $id, '_gv_viz_type', true );
     $library  = get_post_meta( $id, '_gv_library', true );
+    $code     = get_post_meta( $id, '_gv_code', true );
 
     ob_start(); ?>
     <div class="gv-container" data-id="<?php echo esc_attr( $id ); ?>"
          data-url="<?php echo esc_url( $data_url ); ?>"
          data-type="<?php echo esc_attr( $type ); ?>"
          data-library="<?php echo esc_attr( $library ); ?>"
-         data-palette="<?php echo esc_attr( $palette ); ?>"></div>
+         data-palette="<?php echo esc_attr( $palette ); ?>"
+         <?php if ( $code ) : ?>data-code="<?php echo esc_attr( base64_encode( $code ) ); ?>"<?php endif; ?>></div>
     <?php
     return ob_get_clean();
 }
@@ -210,6 +240,15 @@ function gv_enqueue_scripts() {
 add_action( 'wp_enqueue_scripts', 'gv_enqueue_scripts' );
 
 function gv_enqueue_admin_scripts( $hook ) {
+    if ( isset( $_GET['page'] ) && 'gv-sandbox' === $_GET['page'] ) {
+        wp_enqueue_script( 'p5', plugin_dir_url( __FILE__ ) . 'assets/js/p5.min.js', [], '1.9.0', true );
+        wp_enqueue_script( 'gv-sandbox', plugin_dir_url( __FILE__ ) . 'assets/sandbox.js', [ 'p5' ], GV_PLUGIN_VERSION, true );
+        wp_localize_script( 'gv-sandbox', 'gvSandbox', [
+            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+        ] );
+        wp_enqueue_style( 'gv-style', plugin_dir_url( __FILE__ ) . 'assets/style.css', [], GV_PLUGIN_VERSION );
+        return;
+    }
     if ( ! function_exists( 'get_current_screen' ) ) {
         return;
     }
@@ -261,4 +300,69 @@ function gv_save_image_ajax() {
     wp_send_json_success( [ 'id' => $attach_id ] );
 }
 add_action( 'wp_ajax_gv_save_image', 'gv_save_image_ajax' );
+
+function gv_generate_p5_ajax() {
+    if ( ! current_user_can( 'edit_posts' ) ) {
+        wp_send_json_error( 'permission' );
+    }
+    $prompt = sanitize_text_field( $_POST['prompt'] ?? '' );
+    if ( ! $prompt ) {
+        wp_send_json_error( 'no_prompt' );
+    }
+    $api_key = defined( 'GV_OPENAI_API_KEY' ) ? GV_OPENAI_API_KEY : '';
+    if ( ! $api_key ) {
+        wp_send_json_error( 'no_api_key' );
+    }
+    $response = wp_remote_post( 'https://api.openai.com/v1/chat/completions', [
+        'headers' => [
+            'Authorization' => 'Bearer ' . $api_key,
+            'Content-Type'  => 'application/json',
+        ],
+        'body'    => wp_json_encode([
+            'model'    => 'gpt-4o-mini',
+            'messages' => [
+                [ 'role' => 'system', 'content' => 'Eres un asistente que genera código p5.js. Devuelve solo el código.' ],
+                [ 'role' => 'user',   'content' => $prompt ],
+            ],
+            'temperature' => 0.7,
+        ]),
+        'timeout' => 45,
+    ] );
+    if ( is_wp_error( $response ) ) {
+        wp_send_json_error( 'api_error' );
+    }
+    $data = json_decode( wp_remote_retrieve_body( $response ), true );
+    $code = $data['choices'][0]['message']['content'] ?? '';
+    wp_send_json_success( [ 'code' => $code ] );
+}
+add_action( 'wp_ajax_gv_generate_p5', 'gv_generate_p5_ajax' );
+
+function gv_sandbox_save_ajax() {
+    if ( ! current_user_can( 'upload_files' ) ) {
+        wp_send_json_error( 'permission' );
+    }
+    $code   = wp_unslash( $_POST['code'] ?? '' );
+    $slug   = sanitize_title( $_POST['slug'] ?? '' );
+    $prompt = sanitize_text_field( $_POST['prompt'] ?? '' );
+    if ( ! $code || ! $slug ) {
+        wp_send_json_error( 'missing' );
+    }
+    $post_id = wp_insert_post([
+        'post_type'   => 'visualization',
+        'post_status' => 'publish',
+        'post_title'  => $slug,
+    ]);
+    if ( is_wp_error( $post_id ) ) {
+        wp_send_json_error( 'insert_error' );
+    }
+    update_post_meta( $post_id, '_gv_slug', $slug );
+    update_post_meta( $post_id, '_gv_library', 'p5' );
+    update_post_meta( $post_id, '_gv_viz_type', 'custom' );
+    update_post_meta( $post_id, '_gv_code', $code );
+    if ( $prompt ) {
+        update_post_meta( $post_id, '_gv_prompt', $prompt );
+    }
+    wp_send_json_success( [ 'id' => $post_id ] );
+}
+add_action( 'wp_ajax_gv_sandbox_save', 'gv_sandbox_save_ajax' );
 
