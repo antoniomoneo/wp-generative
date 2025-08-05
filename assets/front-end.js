@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (library === 'p5') {
+      await ensureP5();
       switch(type) {
         case 'orbitalRings':
           drawOrbitalRings(el, data, palette);
@@ -300,6 +301,19 @@ function drawSkeleton(el, data) {
       gifRecorder.addFrame(captureCtx, {copy:true, delay:frameDelay});
     };
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+  }
+}
+
+async function ensureP5(){
+  if (typeof p5 !== 'undefined') return;
+  if (window.gvSettings && window.gvSettings.p5Url) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = window.gvSettings.p5Url;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
   }
 }
 

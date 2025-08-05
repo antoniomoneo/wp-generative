@@ -200,7 +200,10 @@ function gv_enqueue_scripts() {
         wp_enqueue_script( 'gifjs', 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js', [], null, true );
         wp_enqueue_script( 'gv-front', plugin_dir_url(__FILE__) . 'assets/front-end.js', [ 'd3', 'd3-scale-chromatic', 'gifjs', 'p5' ], GV_PLUGIN_VERSION, true );
         wp_enqueue_script( 'gv-sketch', plugin_dir_url( __FILE__ ) . 'assets/js/gv-sketch.js', [ 'p5' ], GV_PLUGIN_VERSION, true );
-        wp_localize_script( 'gv-front', 'gvSettings', [ 'palette' => gv_get_theme_palette() ] );
+        wp_localize_script( 'gv-front', 'gvSettings', [
+            'palette' => gv_get_theme_palette(),
+            'p5Url'   => plugin_dir_url( __FILE__ ) . 'assets/js/p5.min.js',
+        ] );
         wp_enqueue_style( 'gv-style', plugin_dir_url(__FILE__) . 'assets/style.css', [], GV_PLUGIN_VERSION );
     }
 }
@@ -218,7 +221,10 @@ function gv_enqueue_admin_scripts( $hook ) {
     wp_enqueue_script( 'd3-scale-chromatic', 'https://d3js.org/d3-scale-chromatic.v3.min.js', [ 'd3' ], null, true );
     wp_enqueue_script( 'p5', plugin_dir_url( __FILE__ ) . 'assets/js/p5.min.js', [], '1.9.0', true );
     wp_enqueue_script( 'gv-admin', plugin_dir_url(__FILE__) . 'assets/admin-preview.js', [ 'd3', 'd3-scale-chromatic', 'p5' ], GV_PLUGIN_VERSION, true );
-    wp_localize_script( 'gv-admin', 'gvSettings', [ 'palette' => gv_get_theme_palette() ] );
+    wp_localize_script( 'gv-admin', 'gvSettings', [
+        'palette' => gv_get_theme_palette(),
+        'p5Url'   => plugin_dir_url( __FILE__ ) . 'assets/js/p5.min.js',
+    ] );
 }
 add_action( 'admin_enqueue_scripts', 'gv_enqueue_admin_scripts' );
 
