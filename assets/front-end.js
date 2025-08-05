@@ -6,6 +6,17 @@
 document.addEventListener('DOMContentLoaded', () => {
   const containers = document.querySelectorAll('.gv-container');
   containers.forEach(async el => {
+    const customCode = el.dataset.code;
+    if (customCode) {
+      await ensureP5();
+      const sketch = atob(customCode);
+      try {
+        new p5(new Function('p', sketch), el);
+      } catch(err) {
+        console.error(err);
+      }
+      return;
+    }
     const dataUrl = el.dataset.url;
     let paletteAttr = el.dataset.palette;
     let palette = [];
