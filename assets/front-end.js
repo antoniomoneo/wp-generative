@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
       palette = [bodyColor];
     }
     const type = el.dataset.type || 'skeleton';
+    const library = el.dataset.library || 'd3';
 
     let data;
     if (dataUrl.toLowerCase().endsWith('.csv')) {
@@ -28,6 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (typeof window.drawVisualization === 'function') {
       window.drawVisualization(el, data, palette);
+      return;
+    }
+
+    if (library === 'p5') {
+      drawP5(el, data, palette);
       return;
     }
 
@@ -183,6 +189,31 @@ function drawSkeleton(el, data) {
     };
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
   }
+}
+
+function drawP5(el, data, palette){
+  const container = document.createElement('div');
+  el.appendChild(container);
+  new p5(p=>{
+    p.setup = function(){
+      p.createCanvas(400,300);
+      p.noLoop();
+    };
+    p.draw = function(){
+      p.background(0);
+      p.stroke(palette[0] || '#fff');
+      p.noFill();
+      p.beginShape();
+      const step = p.width/(data.length-1);
+      data.forEach((d,i)=>{
+        const v = d.valor || d.mean || d.Anomaly || 0;
+        const x = i*step;
+        const y = p.height/2 - v*20 + p.random(-5,5);
+        p.vertex(x,y);
+      });
+      p.endShape();
+    };
+  }, container);
 }
 
 function drawLegend(container, domain, scale){
