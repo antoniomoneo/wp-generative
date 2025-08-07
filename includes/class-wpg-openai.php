@@ -49,6 +49,16 @@ class WPG_OpenAI {
         $code = preg_replace( '/<script[^>]*>(.*?)<\/script>/is', '$1', $code );
         $code = preg_replace( '/document\.write\s*\([^)]*\);?/i', '', $code );
 
-        return trim( $code );
+        $code = trim( $code );
+
+        // Comprueba que existan funciones básicas de p5.js para validar el sketch.
+        $has_setup = preg_match( '/function\s+setup\s*\(/i', $code );
+        $has_draw  = preg_match( '/function\s+draw\s*\(/i', $code );
+        $has_canvas = preg_match( '/createCanvas\s*\(/i', $code );
+        if ( ! ( $has_setup && $has_draw && $has_canvas ) ) {
+            return new WP_Error( 'no_code', 'La respuesta no contiene código p5.js válido' );
+        }
+
+        return $code;
     }
 }
