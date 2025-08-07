@@ -27,16 +27,34 @@ class WPG_Admin {
         return $env_key ? $env_key : '';
     }
 
-    private function get_assistant_id() {
-        $assistant = get_option( 'wpg_assistant_id', '' );
-        if ( $assistant ) {
-            return $assistant;
+    private function get_base_instructions() {
+        return "Eres un generador experto de visualizaciones de datos usando p5.js. Recibirás dos insumos: (1) una muestra tabular de aproximadamente 20 registros, incluyendo todas las columnas relevantes, en formato JSON válido; y (2) una descripción en lenguaje natural de lo que el usuario quiere visualizar. Analiza los datos para identificar tipos de columnas (numéricas, categóricas, fechas en ISO 8601 o DD/MM/AAAA, etc.) y genera un sketch p5.js que represente la información según las instrucciones. El código debe ser funcional, usar setup() y draw(), y puede simular la carga de datos si es necesario. No escribas explicaciones fuera del código. Usa interactividad básica (por ejemplo, zoom o tooltips) cuando sea apropiado. Si la muestra no contiene columnas relevantes o está mal formateada, responde con un mensaje de error indicando las columnas faltantes. Devuelve solo código p5.js.\nfunction setup() { createCanvas(400, 400); }\nfunction draw() { background(220); }";
+    }
+
+    private function parse_table_sample( $body ) {
+        $table = [];
+        $json  = json_decode( $body, true );
+        if ( is_array( $json ) ) {
+            if ( isset( $json[0] ) ) {
+                $table = array_slice( $json, 0, 20 );
+            } elseif ( isset( $json['data'] ) && is_array( $json['data'] ) ) {
+                $table = array_slice( $json['data'], 0, 20 );
+            }
         }
-        if ( defined( 'OPENAI_ASSISTANT_ID' ) ) {
-            return OPENAI_ASSISTANT_ID;
+
+        if ( empty( $table ) ) {
+            $lines   = preg_split( "/\r\n|\n|\r/", trim( $body ) );
+            $lines   = array_slice( $lines, 0, 21 );
+            $headers = str_getcsv( array_shift( $lines ) );
+            foreach ( $lines as $line ) {
+                $row = str_getcsv( $line );
+                if ( count( $row ) === count( $headers ) ) {
+                    $table[] = array_combine( $headers, $row );
+                }
+            }
         }
-        $env_assistant = getenv( 'OPENAI_ASSISTANT_ID' );
-        return $env_assistant ? $env_assistant : '';
+
+        return $table;
     }
 
     public function register_menu() {
@@ -124,11 +142,9 @@ class WPG_Admin {
             if ( $api_key_editable ) {
                 update_option( 'wpg_api_key', sanitize_text_field( $_POST['wpg_api_key'] ?? '' ) );
             }
-            update_option( 'wpg_assistant_id', sanitize_text_field( $_POST['wpg_assistant_id'] ?? '' ) );
             $saved = true;
         }
-        $api_key      = $this->get_api_key();
-        $assistant_id = $this->get_assistant_id();
+        $api_key = $this->get_api_key();
         ?>
         <div class="wrap">
             <h1><?php esc_html_e( 'API Settings', 'wpg' ); ?></h1>
@@ -148,10 +164,6 @@ class WPG_Admin {
                                 <p class="description"><?php esc_html_e( 'Definida por el entorno.', 'wpg' ); ?></p>
                             <?php endif; ?>
                         </td>
-                    </tr>
-                    <tr>
-                        <th><label for="wpg_assistant_id">Assistant ID</label></th>
-                        <td><input type="text" id="wpg_assistant_id" name="wpg_assistant_id" value="<?php echo esc_attr( $assistant_id ); ?>" size="40" /></td>
                     </tr>
                 </table>
                 <?php submit_button( __( 'Guardar', 'wpg' ), 'primary', 'wpg_api_submit' ); ?>
@@ -213,28 +225,28 @@ class WPG_Admin {
     public function ajax_generate_code() {
         check_ajax_referer( 'wpg_nonce' );
 
-        $api_key     = sanitize_text_field( $_POST['api_key'] ?? $this->get_api_key() );
-        $assistantId = sanitize_text_field( $_POST['assistant_id'] ?? $this->get_assistant_id() );
-        $prompt      = sanitize_textarea_field( $_POST['prompt'] ?? '' );
+        $api_key    = sanitize_text_field( $_POST['api_key'] ?? $this->get_api_key() );
+        $user_prompt = sanitize_textarea_field( $_POST['prompt'] ?? '' );
         $dataset_url = esc_url_raw( $_POST['dataset_url'] ?? '' );
 
-        if ( ! $api_key || ! $assistantId ) {
+        if ( ! $api_key ) {
             wp_send_json_error( [ 'message' => __( 'Faltan credenciales.', 'wpg' ) ] );
         }
 
+        $table_sample = [];
         if ( $dataset_url ) {
             $dataset_response = wp_remote_get( $dataset_url );
             if ( is_wp_error( $dataset_response ) ) {
                 wp_send_json_error( [ 'message' => __( 'No se pudo obtener el dataset.', 'wpg' ) ] );
             }
-            $body  = wp_remote_retrieve_body( $dataset_response );
-            $lines = preg_split( "/\r\n|\n|\r/", trim( $body ) );
-            $sample_lines = array_slice( $lines, 0, 21 ); // cabeceras + 20 registros
-            $prompt      .= "\n\nDataset sample:\n" . implode( "\n", $sample_lines );
+            $body         = wp_remote_retrieve_body( $dataset_response );
+            $table_sample = $this->parse_table_sample( $body );
         }
 
-        $openai = new WPG_OpenAI( $api_key, $assistantId );
-        $code   = $openai->get_p5js_code( $prompt );
+        $prompt = $this->get_base_instructions() . "\n\n" . $user_prompt;
+
+        $openai = new WPG_OpenAI( $api_key );
+        $code   = $openai->get_p5js_code( $prompt, $table_sample );
 
         if ( is_wp_error( $code ) ) {
             wp_send_json_error( [ 'message' => $code->get_error_message() ] );
