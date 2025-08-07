@@ -17,3 +17,4 @@ require_once __DIR__ . '/admin/class-wpg-admin.php';
 add_action( 'plugins_loaded', function () {
     WPG_Admin::get_instance();
 } );
+

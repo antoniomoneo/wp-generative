@@ -167,8 +167,8 @@ class WPG_Admin {
     public function ajax_save_visualization() {
         check_ajax_referer( 'wpg_nonce' );
 
-        $slug = sanitize_title( $_POST['slug'] ?? '' );
-        $code = wp_unslash( $_POST['code'] ?? '' );
+        $slug   = sanitize_title( $_POST['slug'] ?? '' );
+        $code   = wp_unslash( $_POST['code'] ?? '' );
         $prompt = sanitize_text_field( $_POST['prompt'] ?? '' );
         if ( ! $slug || ! $code ) {
             wp_send_json_error( [ 'message' => __( 'Datos incompletos.', 'wpg' ) ] );
@@ -190,3 +190,4 @@ class WPG_Admin {
         wp_send_json_success( [ 'id' => $post_id ] );
     }
 }
+
