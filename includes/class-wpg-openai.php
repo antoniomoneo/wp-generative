@@ -22,7 +22,7 @@ class WPG_OpenAI {
                 'OpenAI-Beta'   => 'assistants=v2',
             ],
             'body'    => wp_json_encode( [
-                'model'             => $this->assistant_id,
+                'assistant_id'      => $this->assistant_id,
                 'input'             => $prompt,
                 'max_output_tokens' => 1024,
             ] ),
