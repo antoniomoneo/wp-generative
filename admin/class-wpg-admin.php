@@ -15,6 +15,30 @@ class WPG_Admin {
         return self::$instance ?: self::$instance = new self();
     }
 
+    private function get_api_key() {
+        $api_key = get_option( 'wpg_api_key', '' );
+        if ( $api_key ) {
+            return $api_key;
+        }
+        if ( defined( 'OPENAI_API_KEY' ) ) {
+            return OPENAI_API_KEY;
+        }
+        $env_key = getenv( 'OPENAI_API_KEY' );
+        return $env_key ? $env_key : '';
+    }
+
+    private function get_assistant_id() {
+        $assistant = get_option( 'wpg_assistant_id', '' );
+        if ( $assistant ) {
+            return $assistant;
+        }
+        if ( defined( 'OPENAI_ASSISTANT_ID' ) ) {
+            return OPENAI_ASSISTANT_ID;
+        }
+        $env_assistant = getenv( 'OPENAI_ASSISTANT_ID' );
+        return $env_assistant ? $env_assistant : '';
+    }
+
     public function register_menu() {
         $main_slug = 'wpg-api-settings';
 
@@ -83,14 +107,17 @@ class WPG_Admin {
     }
 
     public function render_api_settings_page() {
-        $saved = false;
+        $saved            = false;
+        $api_key_editable = ! defined( 'OPENAI_API_KEY' ) && ! getenv( 'OPENAI_API_KEY' );
         if ( isset( $_POST['wpg_connection_submit'] ) && check_admin_referer( 'wpg_save_connection' ) ) {
-            update_option( 'wpg_api_key', sanitize_text_field( $_POST['wpg_api_key'] ?? '' ) );
+            if ( $api_key_editable ) {
+                update_option( 'wpg_api_key', sanitize_text_field( $_POST['wpg_api_key'] ?? '' ) );
+            }
             update_option( 'wpg_assistant_id', sanitize_text_field( $_POST['wpg_assistant_id'] ?? '' ) );
             $saved = true;
         }
-        $api_key     = get_option( 'wpg_api_key', '' );
-        $assistantId = get_option( 'wpg_assistant_id', '' );
+        $api_key     = $this->get_api_key();
+        $assistantId = $this->get_assistant_id();
         ?>
         <div class="wrap">
             <h1><?php esc_html_e( 'API Settings', 'wpg' ); ?></h1>
@@ -102,7 +129,14 @@ class WPG_Admin {
                 <table class="form-table">
                     <tr>
                         <th><label for="wpg_api_key">API Key</label></th>
-                        <td><input type="password" id="wpg_api_key" name="wpg_api_key" value="<?php echo esc_attr( $api_key ); ?>" size="40" /></td>
+                        <td>
+                            <?php if ( $api_key_editable ) : ?>
+                                <input type="password" id="wpg_api_key" name="wpg_api_key" value="<?php echo esc_attr( $api_key ); ?>" size="40" />
+                            <?php else : ?>
+                                <input type="text" id="wpg_api_key" value="********" size="40" readonly />
+                                <p class="description"><?php esc_html_e( 'Definida por el entorno.', 'wpg' ); ?></p>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                     <tr>
                         <th><label for="wpg_assistant_id">Assistant ID</label></th>
@@ -155,8 +189,8 @@ class WPG_Admin {
     public function ajax_generate_code() {
         check_ajax_referer( 'wpg_nonce' );
 
-        $api_key     = sanitize_text_field( $_POST['api_key'] ?? get_option( 'wpg_api_key', '' ) );
-        $assistantId = sanitize_text_field( $_POST['assistant_id'] ?? get_option( 'wpg_assistant_id', '' ) );
+        $api_key     = sanitize_text_field( $_POST['api_key'] ?? $this->get_api_key() );
+        $assistantId = sanitize_text_field( $_POST['assistant_id'] ?? $this->get_assistant_id() );
         $prompt      = sanitize_textarea_field( $_POST['prompt'] ?? '' );
         $dataset_url = esc_url_raw( $_POST['dataset_url'] ?? '' );
 
