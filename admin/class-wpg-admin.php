@@ -67,7 +67,7 @@ class WPG_Admin {
             'wpg-admin-js',
             plugin_dir_url( __FILE__ ) . 'js/wpg-admin.js',
             [ 'jquery', 'p5' ],
-            '1.1.0',
+            '1.2.0',
             true
         );
         wp_localize_script( 'wpg-admin-js', 'WPG_Ajax', [

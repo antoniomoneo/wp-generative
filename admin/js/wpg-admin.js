@@ -58,7 +58,14 @@
         let match;
         const vars = [];
         while ((match = regex.exec(code)) !== null) {
-            vars.push({ name: match[1], value: match[2].trim() });
+            const rawValue = match[2].trim();
+            let type = 'text';
+            if (!isNaN(parseFloat(rawValue))) {
+                type = 'number';
+            } else if (/^\[(?:\s*['"][^'"]+['"]\s*,?)+\]$/.test(rawValue)) {
+                type = 'select';
+            }
+            vars.push({ name: match[1], value: rawValue, type: type });
         }
 
         vars.forEach(v => {
@@ -66,27 +73,40 @@
             const label = $('<label>').text(v.name + ': ');
             let input;
 
-            if (!isNaN(parseFloat(v.value))) {
+            if (v.type === 'number') {
                 input = $('<input type="range" min="0" max="' + (parseFloat(v.value) * 3) +
                           '" value="' + parseFloat(v.value) + '">');
+            } else if (v.type === 'select') {
+                let options = [];
+                try {
+                    options = eval(v.value);
+                } catch (e) {}
+                input = $('<select></select>');
+                options.forEach(opt => {
+                    input.append('<option value="' + opt + '">' + opt + '</option>');
+                });
             } else {
-                input = $('<input type="text" value="' + v.value + '">');
+                input = $('<input type="text" value="' + v.value.replace(/["']/g, '') + '">');
             }
 
-            input.on('input change', () => updateSketch(v.name, input.val()));
+            input.on('input change', () => updateSketch(v.name, input.val(), v.type));
             wrapper.append(label).append(input);
             $('#wpg-controls').append(wrapper);
         });
 
         new p5(p => eval(code), document.getElementById('wpg-preview'));
 
-        function updateSketch(varName, value) {
+        function updateSketch(varName, value, type) {
+            if (type !== 'number') {
+                value = `'${value}'`;
+            }
             const newCode = code.replace(
                 new RegExp('(let|var|const)\\s+' + varName + '\\s*=\\s*[^;]+'),
                 `$1 ${varName} = ${value}`
             );
             $('#wpg-preview').empty();
             lastCode = newCode;
+            code = newCode;
             new p5(p => eval(newCode), document.getElementById('wpg-preview'));
         }
     }

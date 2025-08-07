@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       WP Generative p5.js Assistant
  * Description:       Envía prompts a un asistente de OpenAI y genera código p5.js con controles dinámicos.
- * Version:           1.1.0
+ * Version:           1.2.0
  * Author:            KGMT Knowledge Services
  */
 
