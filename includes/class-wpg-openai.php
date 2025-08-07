@@ -38,6 +38,17 @@ class WPG_OpenAI {
         if ( ! isset( $body['output'][0]['content'][0]['text'] ) ) {
             return new WP_Error( 'no_code', 'La respuesta no contiene código p5.js' );
         }
-        return $body['output'][0]['content'][0]['text'];
+
+        // Extrae solo el código JavaScript en caso de que la respuesta
+        // incluya una página HTML completa. Algunos modelos devuelven
+        // <script> o incluso llamadas a document.write() que borran la
+        // página y generan el modo "Quirks" en el navegador.
+        $code = $body['output'][0]['content'][0]['text'];
+        $code = preg_replace( '/<!DOCTYPE[^>]*>/i', '', $code );
+        $code = preg_replace( '/<\/?(?:html|head|body)[^>]*>/i', '', $code );
+        $code = preg_replace( '/<script[^>]*>(.*?)<\/script>/is', '$1', $code );
+        $code = preg_replace( '/document\.write\s*\([^)]*\);?/i', '', $code );
+
+        return trim( $code );
     }
 }
