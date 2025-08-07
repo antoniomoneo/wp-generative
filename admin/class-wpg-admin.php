@@ -40,16 +40,25 @@ class WPG_Admin {
     }
 
     public function register_menu() {
-        $main_slug = 'wpg-api-settings';
+        $main_slug = 'wpg-settings';
 
         add_menu_page(
             __( 'Gen Viz', 'wpg' ),
             __( 'Gen Viz', 'wpg' ),
             'manage_options',
             $main_slug,
-            [ $this, 'render_api_settings_page' ],
+            [ $this, 'render_settings_page' ],
             'dashicons-admin-site',
             25
+        );
+
+        add_submenu_page(
+            $main_slug,
+            __( 'Settings', 'wpg' ),
+            __( 'Settings', 'wpg' ),
+            'manage_options',
+            $main_slug,
+            [ $this, 'render_settings_page' ]
         );
 
         add_submenu_page(
@@ -57,7 +66,7 @@ class WPG_Admin {
             __( 'API Settings', 'wpg' ),
             __( 'API Settings', 'wpg' ),
             'manage_options',
-            $main_slug,
+            'wpg-api-settings',
             [ $this, 'render_api_settings_page' ]
         );
 
@@ -83,7 +92,7 @@ class WPG_Admin {
     }
 
     public function enqueue_assets( $hook ) {
-        if ( 'wpg-api-settings_page_wpg-sandbox' !== $hook ) {
+        if ( 'wpg-settings_page_wpg-sandbox' !== $hook ) {
             return;
         }
         wp_enqueue_script(
@@ -109,15 +118,13 @@ class WPG_Admin {
     public function render_api_settings_page() {
         $saved            = false;
         $api_key_editable = ! defined( 'OPENAI_API_KEY' ) && ! getenv( 'OPENAI_API_KEY' );
-        if ( isset( $_POST['wpg_connection_submit'] ) && check_admin_referer( 'wpg_save_connection' ) ) {
+        if ( isset( $_POST['wpg_api_submit'] ) && check_admin_referer( 'wpg_save_api' ) ) {
             if ( $api_key_editable ) {
                 update_option( 'wpg_api_key', sanitize_text_field( $_POST['wpg_api_key'] ?? '' ) );
             }
-            update_option( 'wpg_assistant_id', sanitize_text_field( $_POST['wpg_assistant_id'] ?? '' ) );
             $saved = true;
         }
-        $api_key     = $this->get_api_key();
-        $assistantId = $this->get_assistant_id();
+        $api_key = $this->get_api_key();
         ?>
         <div class="wrap">
             <h1><?php esc_html_e( 'API Settings', 'wpg' ); ?></h1>
@@ -125,7 +132,7 @@ class WPG_Admin {
                 <div class="updated notice"><p><?php esc_html_e( 'Opciones guardadas.', 'wpg' ); ?></p></div>
             <?php endif; ?>
             <form method="post">
-                <?php wp_nonce_field( 'wpg_save_connection' ); ?>
+                <?php wp_nonce_field( 'wpg_save_api' ); ?>
                 <table class="form-table">
                     <tr>
                         <th><label for="wpg_api_key">API Key</label></th>
@@ -138,12 +145,35 @@ class WPG_Admin {
                             <?php endif; ?>
                         </td>
                     </tr>
+                </table>
+                <?php submit_button( __( 'Guardar', 'wpg' ), 'primary', 'wpg_api_submit' ); ?>
+            </form>
+        </div>
+        <?php
+    }
+
+    public function render_settings_page() {
+        $saved      = false;
+        if ( isset( $_POST['wpg_settings_submit'] ) && check_admin_referer( 'wpg_save_settings' ) ) {
+            update_option( 'wpg_assistant_id', sanitize_text_field( $_POST['wpg_assistant_id'] ?? '' ) );
+            $saved = true;
+        }
+        $assistantId = $this->get_assistant_id();
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e( 'Settings', 'wpg' ); ?></h1>
+            <?php if ( $saved ) : ?>
+                <div class="updated notice"><p><?php esc_html_e( 'Opciones guardadas.', 'wpg' ); ?></p></div>
+            <?php endif; ?>
+            <form method="post">
+                <?php wp_nonce_field( 'wpg_save_settings' ); ?>
+                <table class="form-table">
                     <tr>
                         <th><label for="wpg_assistant_id">Assistant ID</label></th>
                         <td><input type="text" id="wpg_assistant_id" name="wpg_assistant_id" value="<?php echo esc_attr( $assistantId ); ?>" size="40" /></td>
                     </tr>
                 </table>
-                <?php submit_button( __( 'Guardar', 'wpg' ), 'primary', 'wpg_connection_submit' ); ?>
+                <?php submit_button( __( 'Guardar', 'wpg' ), 'primary', 'wpg_settings_submit' ); ?>
             </form>
         </div>
         <?php
