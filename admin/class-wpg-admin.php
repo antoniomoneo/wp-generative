@@ -27,6 +27,18 @@ class WPG_Admin {
         return $env_key ? $env_key : '';
     }
 
+    private function get_assistant_id() {
+        $assistant = get_option( 'wpg_assistant_id', '' );
+        if ( $assistant ) {
+            return $assistant;
+        }
+        if ( defined( 'OPENAI_ASSISTANT_ID' ) ) {
+            return OPENAI_ASSISTANT_ID;
+        }
+        $env_assistant = getenv( 'OPENAI_ASSISTANT_ID' );
+        return $env_assistant ? $env_assistant : '';
+    }
+
     private function get_base_instructions() {
         return "Eres un generador experto de visualizaciones de datos usando p5.js. Recibirás dos insumos: (1) una muestra tabular de aproximadamente 20 registros, incluyendo todas las columnas relevantes, en formato JSON válido; y (2) una descripción en lenguaje natural de lo que el usuario quiere visualizar. Analiza los datos para identificar tipos de columnas (numéricas, categóricas, fechas en ISO 8601 o DD/MM/AAAA, etc.) y genera un sketch p5.js que represente la información según las instrucciones. El código debe ser funcional, usar setup() y draw(), y puede simular la carga de datos si es necesario. No escribas explicaciones fuera del código. Usa interactividad básica (por ejemplo, zoom o tooltips) cuando sea apropiado. Si la muestra no contiene columnas relevantes o está mal formateada, responde con un mensaje de error indicando las columnas faltantes. Devuelve solo código p5.js.\nfunction setup() { createCanvas(400, 400); }\nfunction draw() { background(220); }";
     }
@@ -142,9 +154,11 @@ class WPG_Admin {
             if ( $api_key_editable ) {
                 update_option( 'wpg_api_key', sanitize_text_field( $_POST['wpg_api_key'] ?? '' ) );
             }
+            update_option( 'wpg_assistant_id', sanitize_text_field( $_POST['wpg_assistant_id'] ?? '' ) );
             $saved = true;
         }
-        $api_key = $this->get_api_key();
+        $api_key       = $this->get_api_key();
+        $assistant_id  = $this->get_assistant_id();
         ?>
         <div class="wrap">
             <h1><?php esc_html_e( 'API Settings', 'wpg' ); ?></h1>
@@ -164,6 +178,10 @@ class WPG_Admin {
                                 <p class="description"><?php esc_html_e( 'Definida por el entorno.', 'wpg' ); ?></p>
                             <?php endif; ?>
                         </td>
+                    </tr>
+                    <tr>
+                        <th><label for="wpg_assistant_id">Assistant ID</label></th>
+                        <td><input type="text" id="wpg_assistant_id" name="wpg_assistant_id" value="<?php echo esc_attr( $assistant_id ); ?>" size="40" /></td>
                     </tr>
                 </table>
                 <?php submit_button( __( 'Guardar', 'wpg' ), 'primary', 'wpg_api_submit' ); ?>
