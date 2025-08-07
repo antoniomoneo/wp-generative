@@ -5,7 +5,7 @@ class WPG_OpenAI {
     private $api_key;
     private $api_url;
 
-    public function __construct( $api_key, $api_url = 'https://api.tu-plugin.com/v1/visualizations' ) {
+    public function __construct( $api_key, $api_url = 'https://api.openai.com/v1/responses' ) {
         $this->api_key = $api_key;
         $this->api_url = $api_url;
     }
@@ -15,13 +15,20 @@ class WPG_OpenAI {
             return new WP_Error( 'missing_credentials', 'API Key no establecido.' );
         }
 
+        $table_json = wp_json_encode( $table_sample );
+        $input      = "Dataset:\n{$table_json}\n\nPrompt:\n{$prompt}";
+
         $payload = [
-            'tableSample' => $table_sample,
-            'userPrompt'  => $prompt,
-            'options'     => [
-                'lang'    => 'es',
-                'library' => 'p5.js',
+            'model'            => 'gpt-4.1-mini',
+            'input'            => [
+                [
+                    'role'    => 'user',
+                    'content' => [
+                        [ 'type' => 'text', 'text' => $input ],
+                    ],
+                ],
             ],
+            'max_output_tokens' => 1024,
         ];
 
         $args = [
@@ -39,11 +46,10 @@ class WPG_OpenAI {
         }
 
         $body = json_decode( wp_remote_retrieve_body( $response ), true );
-        if ( ! isset( $body['sketch'] ) ) {
+        $code = trim( $body['output'][0]['content'][0]['text'] ?? '' );
+        if ( '' === $code ) {
             return new WP_Error( 'no_code', 'La respuesta no contiene código p5.js' );
         }
-
-        $code = trim( $body['sketch'] );
 
         // Comprueba que existan funciones básicas de p5.js para validar el sketch.
         $has_setup  = preg_match( '/function\s+setup\s*\(/i', $code );
