@@ -245,6 +245,7 @@ function gv_enqueue_admin_scripts( $hook ) {
         wp_enqueue_script( 'gv-sandbox', plugin_dir_url( __FILE__ ) . 'assets/sandbox.js', [ 'p5' ], GV_PLUGIN_VERSION, true );
         wp_localize_script( 'gv-sandbox', 'gvSandbox', [
             'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+            'p5Url'   => plugin_dir_url( __FILE__ ) . 'assets/js/p5.min.js',
         ] );
         wp_enqueue_style( 'gv-style', plugin_dir_url( __FILE__ ) . 'assets/style.css', [], GV_PLUGIN_VERSION );
         return;

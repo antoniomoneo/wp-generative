@@ -11,16 +11,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const preview = document.getElementById('gv-sandbox-preview');
   const slugEl = document.getElementById('gv-sandbox-slug');
   const statusEl = document.getElementById('gv-sandbox-status');
-  let p5Instance = null;
 
   function runSketch(){
-    if (p5Instance) { p5Instance.remove(); p5Instance = null; }
     preview.innerHTML = '';
     const code = codeEl.value;
     if (!code.trim()) return;
-    try {
-      p5Instance = new p5(new Function('p', code), preview);
-    } catch(e){ console.error(e); }
+    const safe = code.replace(/<\/script>/g, '<\\/script>');
+    const doc = `<!DOCTYPE html><html><head><script src="${gvSandbox.p5Url}"></script></head><body><script>${safe}</script></body></html>`;
+    const iframe = document.createElement('iframe');
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = '0';
+    preview.appendChild(iframe);
+    iframe.srcdoc = doc;
   }
 
   if (generateBtn) {
