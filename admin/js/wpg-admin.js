@@ -1,12 +1,10 @@
 (function ($) {
-    const form = $('#wpg-sandbox-form');
     const btnGenerate = $('#wpg-generate');
     const btnRun = $('#wpg-run');
     const btnSave = $('#wpg-save');
     const textareaCode = $('#wpg_code');
     let lastCode = '';
-
-    form.on('submit', function (e) {
+    btnGenerate.on('click', function (e) {
         e.preventDefault();
         btnGenerate.prop('disabled', true);
 
