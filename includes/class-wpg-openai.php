@@ -46,7 +46,10 @@ class WPG_OpenAI {
         }
 
         $body = json_decode( wp_remote_retrieve_body( $response ), true );
-        $code = trim( $body['output'][0]['content'][0]['text'] ?? '' );
+        $code = trim( $body['output_text'] ?? '' );
+        if ( '' === $code && isset( $body['output'][0]['content'][0]['text'] ) ) {
+            $code = trim( $body['output'][0]['content'][0]['text'] );
+        }
         if ( '' === $code ) {
             return new WP_Error( 'no_code', 'La respuesta no contiene código p5.js' );
         }
