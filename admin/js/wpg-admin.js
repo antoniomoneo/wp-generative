@@ -4,6 +4,24 @@
     const btnSave = $('#wpg-save');
     const textareaCode = $('#wpg_code');
     let lastCode = '';
+    const datasetList = $('#wpg_dataset_list');
+
+    if (datasetList.length) {
+        fetch('https://api.github.com/repos/antoniomoneo/Datasets/git/trees/main?recursive=1')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.tree) {
+                    return;
+                }
+                data.tree
+                    .filter(item => item.type === 'blob' && /\.(csv|json)$/i.test(item.path))
+                    .forEach(item => {
+                        const rawUrl = `https://raw.githubusercontent.com/antoniomoneo/Datasets/main/${item.path}`;
+                        datasetList.append(`<option value="${rawUrl}">${item.path}</option>`);
+                    });
+            })
+            .catch(() => {});
+    }
     btnGenerate.on('click', function (e) {
         e.preventDefault();
         btnGenerate.prop('disabled', true);
