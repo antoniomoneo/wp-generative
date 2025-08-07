@@ -92,7 +92,8 @@ class WPG_Admin {
     }
 
     public function enqueue_assets( $hook ) {
-        if ( 'wpg-settings_page_wpg-sandbox' !== $hook ) {
+        $is_sandbox_page = ( isset( $_GET['page'] ) && 'wpg-sandbox' === $_GET['page'] );
+        if ( 'wpg-settings_page_wpg-sandbox' !== $hook && ! $is_sandbox_page ) {
             return;
         }
         wp_enqueue_script(
