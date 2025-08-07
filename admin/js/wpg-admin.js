@@ -1,7 +1,9 @@
 (function ($) {
     const form = $('#wpg-sandbox-form');
     const btnGenerate = $('#wpg-generate');
+    const btnRun = $('#wpg-run');
     const btnSave = $('#wpg-save');
+    const textareaCode = $('#wpg_code');
     let lastCode = '';
 
     form.on('submit', function (e) {
@@ -19,6 +21,7 @@
             .done(res => {
                 if (res.success) {
                     lastCode = res.data.code;
+                    textareaCode.val(lastCode);
                     renderSketch(lastCode);
                 } else {
                     alert(res.data.message);
@@ -26,6 +29,16 @@
             })
             .fail(() => alert('Error en la solicitud.'))
             .always(() => btnGenerate.prop('disabled', false));
+    });
+
+    btnRun.on('click', function (e) {
+        e.preventDefault();
+        const code = textareaCode.val();
+        if (code.trim() === '') {
+            alert('No hay código para ejecutar');
+            return;
+        }
+        renderSketch(code);
     });
 
     btnSave.on('click', function (e) {
@@ -52,8 +65,13 @@
     });
 
     function renderSketch(code) {
+        lastCode = code;
+        textareaCode.val(code);
         $('#wpg-preview').empty();
         $('#wpg-controls').empty();
+
+        const iframe = $('<iframe style="width:100%;height:100%;border:0;"></iframe>');
+        $('#wpg-preview').append(iframe);
 
         const regex = /(?:let|var|const)\s+([a-zA-Z_]\w*)\s*=\s*([^;]+)/g;
         let match;
@@ -95,20 +113,25 @@
             $('#wpg-controls').append(wrapper);
         });
 
-        new p5(p => eval(code), document.getElementById('wpg-preview'));
+        renderIframe(code);
 
         function updateSketch(varName, value, type) {
             if (type !== 'number') {
                 value = `'${value}'`;
             }
-            const newCode = code.replace(
+            code = code.replace(
                 new RegExp('(let|var|const)\\s+' + varName + '\\s*=\\s*[^;]+'),
                 `$1 ${varName} = ${value}`
             );
-            $('#wpg-preview').empty();
-            lastCode = newCode;
-            code = newCode;
-            new p5(p => eval(newCode), document.getElementById('wpg-preview'));
+            lastCode = code;
+            textareaCode.val(code);
+            renderIframe(code);
+        }
+
+        function renderIframe(c) {
+            const safe = c.replace(/<\/script>/g, '<\\/script>');
+            const doc = `<!DOCTYPE html><html><head><script src="${WPG_Ajax.p5_url}"></script></head><body><script>${safe}</script></body></html>`;
+            iframe[0].srcdoc = doc;
         }
     }
 })(jQuery);
