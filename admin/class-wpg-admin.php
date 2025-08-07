@@ -178,7 +178,7 @@ class WPG_Admin {
                 <p><textarea id="wpg_prompt" rows="4" cols="50"></textarea></p>
                 <p><label for="wpg_dataset"><?php esc_html_e( 'Dataset URL', 'wpg' ); ?></label></p>
                 <p><input type="text" id="wpg_dataset" size="50" /></p>
-                <?php submit_button( __( 'Generar', 'wpg' ), 'primary', 'wpg-generate' ); ?>
+                <p><button type="button" id="wpg-generate" class="button button-primary"><?php esc_html_e( 'Generar', 'wpg' ); ?></button></p>
             </form>
             <div id="wpg-editor" style="display:flex;gap:1em;margin-top:2em;">
                 <textarea id="wpg_code" style="width:50%;height:400px;"></textarea>
