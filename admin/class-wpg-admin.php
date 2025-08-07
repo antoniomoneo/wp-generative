@@ -122,9 +122,11 @@ class WPG_Admin {
             if ( $api_key_editable ) {
                 update_option( 'wpg_api_key', sanitize_text_field( $_POST['wpg_api_key'] ?? '' ) );
             }
+            update_option( 'wpg_assistant_id', sanitize_text_field( $_POST['wpg_assistant_id'] ?? '' ) );
             $saved = true;
         }
-        $api_key = $this->get_api_key();
+        $api_key      = $this->get_api_key();
+        $assistant_id = $this->get_assistant_id();
         ?>
         <div class="wrap">
             <h1><?php esc_html_e( 'API Settings', 'wpg' ); ?></h1>
@@ -145,6 +147,10 @@ class WPG_Admin {
                             <?php endif; ?>
                         </td>
                     </tr>
+                    <tr>
+                        <th><label for="wpg_assistant_id">Assistant ID</label></th>
+                        <td><input type="text" id="wpg_assistant_id" name="wpg_assistant_id" value="<?php echo esc_attr( $assistant_id ); ?>" size="40" /></td>
+                    </tr>
                 </table>
                 <?php submit_button( __( 'Guardar', 'wpg' ), 'primary', 'wpg_api_submit' ); ?>
             </form>
@@ -153,28 +159,10 @@ class WPG_Admin {
     }
 
     public function render_settings_page() {
-        $saved      = false;
-        if ( isset( $_POST['wpg_settings_submit'] ) && check_admin_referer( 'wpg_save_settings' ) ) {
-            update_option( 'wpg_assistant_id', sanitize_text_field( $_POST['wpg_assistant_id'] ?? '' ) );
-            $saved = true;
-        }
-        $assistantId = $this->get_assistant_id();
         ?>
         <div class="wrap">
             <h1><?php esc_html_e( 'Settings', 'wpg' ); ?></h1>
-            <?php if ( $saved ) : ?>
-                <div class="updated notice"><p><?php esc_html_e( 'Opciones guardadas.', 'wpg' ); ?></p></div>
-            <?php endif; ?>
-            <form method="post">
-                <?php wp_nonce_field( 'wpg_save_settings' ); ?>
-                <table class="form-table">
-                    <tr>
-                        <th><label for="wpg_assistant_id">Assistant ID</label></th>
-                        <td><input type="text" id="wpg_assistant_id" name="wpg_assistant_id" value="<?php echo esc_attr( $assistantId ); ?>" size="40" /></td>
-                    </tr>
-                </table>
-                <?php submit_button( __( 'Guardar', 'wpg' ), 'primary', 'wpg_settings_submit' ); ?>
-            </form>
+            <p><?php esc_html_e( 'No hay ajustes disponibles.', 'wpg' ); ?></p>
         </div>
         <?php
     }
