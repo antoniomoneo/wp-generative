@@ -12,6 +12,7 @@
             action: 'wpg_generate_code',
             _ajax_nonce: WPG_Ajax.nonce,
             prompt: $('#wpg_prompt').val(),
+            dataset_url: $('#wpg_dataset').val(),
         };
 
         $.post(WPG_Ajax.ajax_url, data)

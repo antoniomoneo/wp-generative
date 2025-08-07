@@ -73,7 +73,7 @@ class WPG_Admin {
             'wpg-admin-js',
             plugin_dir_url( __FILE__ ) . 'js/wpg-admin.js',
             [ 'jquery', 'p5' ],
-            '1.2.0',
+            '1.3.0',
             true
         );
         wp_localize_script( 'wpg-admin-js', 'WPG_Ajax', [
@@ -122,6 +122,8 @@ class WPG_Admin {
             <form id="wpg-sandbox-form">
                 <p><label for="wpg_prompt"><?php esc_html_e( 'Prompt', 'wpg' ); ?></label></p>
                 <p><textarea id="wpg_prompt" rows="4" cols="50"></textarea></p>
+                <p><label for="wpg_dataset"><?php esc_html_e( 'Dataset URL', 'wpg' ); ?></label></p>
+                <p><input type="text" id="wpg_dataset" size="50" /></p>
                 <?php submit_button( __( 'Generar', 'wpg' ), 'primary', 'wpg-generate' ); ?>
             </form>
             <div id="wpg-controls" style="margin-top:2em;"></div>
@@ -156,9 +158,21 @@ class WPG_Admin {
         $api_key     = sanitize_text_field( $_POST['api_key'] ?? get_option( 'wpg_api_key', '' ) );
         $assistantId = sanitize_text_field( $_POST['assistant_id'] ?? get_option( 'wpg_assistant_id', '' ) );
         $prompt      = sanitize_textarea_field( $_POST['prompt'] ?? '' );
+        $dataset_url = esc_url_raw( $_POST['dataset_url'] ?? '' );
 
         if ( ! $api_key || ! $assistantId ) {
             wp_send_json_error( [ 'message' => __( 'Faltan credenciales.', 'wpg' ) ] );
+        }
+
+        if ( $dataset_url ) {
+            $dataset_response = wp_remote_get( $dataset_url );
+            if ( is_wp_error( $dataset_response ) ) {
+                wp_send_json_error( [ 'message' => __( 'No se pudo obtener el dataset.', 'wpg' ) ] );
+            }
+            $body  = wp_remote_retrieve_body( $dataset_response );
+            $lines = preg_split( "/\r\n|\n|\r/", trim( $body ) );
+            $sample_lines = array_slice( $lines, 0, 21 ); // cabeceras + 20 registros
+            $prompt      .= "\n\nDataset sample:\n" . implode( "\n", $sample_lines );
         }
 
         $openai = new WPG_OpenAI( $api_key, $assistantId );
