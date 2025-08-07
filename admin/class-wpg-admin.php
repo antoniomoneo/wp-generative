@@ -112,6 +112,7 @@ class WPG_Admin {
         wp_localize_script( 'wpg-admin-js', 'WPG_Ajax', [
             'ajax_url' => admin_url( 'admin-ajax.php' ),
             'nonce'    => wp_create_nonce( 'wpg_nonce' ),
+            'p5_url'   => plugin_dir_url( __FILE__ ) . '../assets/js/p5.min.js',
         ] );
     }
 
@@ -178,8 +179,12 @@ class WPG_Admin {
                 <p><input type="text" id="wpg_dataset" size="50" /></p>
                 <?php submit_button( __( 'Generar', 'wpg' ), 'primary', 'wpg-generate' ); ?>
             </form>
-            <div id="wpg-controls" style="margin-top:2em;"></div>
-            <div id="wpg-preview" style="margin-top:2em;"></div>
+            <div id="wpg-editor" style="display:flex;gap:1em;margin-top:2em;">
+                <textarea id="wpg_code" style="width:50%;height:400px;"></textarea>
+                <div id="wpg-preview" style="flex:1;height:400px;border:1px solid #ccc;"></div>
+            </div>
+            <p><button id="wpg-run" class="button"><?php esc_html_e( 'Vista previa', 'wpg' ); ?></button></p>
+            <div id="wpg-controls" style="margin-top:1em;"></div>
             <h2><?php esc_html_e( 'Guardar visualización', 'wpg' ); ?></h2>
             <p><label for="wpg_slug">Slug</label> <input type="text" id="wpg_slug" /></p>
             <p><button id="wpg-save" class="button button-primary"><?php esc_html_e( 'Guardar', 'wpg' ); ?></button> <span id="wpg-save-status"></span></p>
