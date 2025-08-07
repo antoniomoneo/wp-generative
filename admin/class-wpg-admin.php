@@ -189,7 +189,10 @@ class WPG_Admin {
                 <p><label for="wpg_prompt"><?php esc_html_e( 'Prompt', 'wpg' ); ?></label></p>
                 <p><textarea id="wpg_prompt" rows="4" cols="50"></textarea></p>
                 <p><label for="wpg_dataset"><?php esc_html_e( 'Dataset URL', 'wpg' ); ?></label></p>
-                <p><input type="text" id="wpg_dataset" size="50" /></p>
+                <p>
+                    <input type="text" id="wpg_dataset" size="50" list="wpg_dataset_list" />
+                    <datalist id="wpg_dataset_list"></datalist>
+                </p>
                 <p><button type="button" id="wpg-generate" class="button button-primary"><?php esc_html_e( 'Generar', 'wpg' ); ?></button></p>
             </form>
             <div id="wpg-editor" style="display:flex;gap:1em;margin-top:2em;">
