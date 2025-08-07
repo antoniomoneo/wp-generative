@@ -16,44 +16,50 @@ class WPG_Admin {
     }
 
     public function register_menu() {
+        $main_slug = 'wpg-api-settings';
+
         add_menu_page(
             __( 'Gen Viz', 'wpg' ),
             __( 'Gen Viz', 'wpg' ),
             'manage_options',
-            'wpg-gen-viz',
-            [ $this, 'render_connection_page' ],
+            $main_slug,
+            [ $this, 'render_api_settings_page' ],
             'dashicons-admin-site',
             25
         );
 
         add_submenu_page(
-            'wpg-gen-viz',
-            __( 'Conexión con OpenAI', 'wpg' ),
-            __( 'Conexión', 'wpg' ),
+            $main_slug,
+            __( 'API Settings', 'wpg' ),
+            __( 'API Settings', 'wpg' ),
             'manage_options',
-            'wpg-gen-viz',
-            [ $this, 'render_connection_page' ]
+            $main_slug,
+            [ $this, 'render_api_settings_page' ]
         );
+
         add_submenu_page(
-            'wpg-gen-viz',
+            $main_slug,
             __( 'Sandbox', 'wpg' ),
             __( 'Sandbox', 'wpg' ),
             'manage_options',
             'wpg-sandbox',
             [ $this, 'render_sandbox_page' ]
         );
+
         add_submenu_page(
-            'wpg-gen-viz',
+            $main_slug,
             __( 'Librería', 'wpg' ),
             __( 'Librería', 'wpg' ),
             'manage_options',
             'wpg-library',
             [ $this, 'render_library_page' ]
         );
+
+        remove_submenu_page( $main_slug, $main_slug );
     }
 
     public function enqueue_assets( $hook ) {
-        if ( 'wpg-gen-viz_page_wpg-sandbox' !== $hook ) {
+        if ( 'wpg-api-settings_page_wpg-sandbox' !== $hook ) {
             return;
         }
         wp_enqueue_script(
@@ -76,7 +82,7 @@ class WPG_Admin {
         ] );
     }
 
-    public function render_connection_page() {
+    public function render_api_settings_page() {
         $saved = false;
         if ( isset( $_POST['wpg_connection_submit'] ) && check_admin_referer( 'wpg_save_connection' ) ) {
             update_option( 'wpg_api_key', sanitize_text_field( $_POST['wpg_api_key'] ?? '' ) );
@@ -87,7 +93,7 @@ class WPG_Admin {
         $assistantId = get_option( 'wpg_assistant_id', '' );
         ?>
         <div class="wrap">
-            <h1><?php esc_html_e( 'Conexión con OpenAI PLATFORM', 'wpg' ); ?></h1>
+            <h1><?php esc_html_e( 'API Settings', 'wpg' ); ?></h1>
             <?php if ( $saved ) : ?>
                 <div class="updated notice"><p><?php esc_html_e( 'Opciones guardadas.', 'wpg' ); ?></p></div>
             <?php endif; ?>
