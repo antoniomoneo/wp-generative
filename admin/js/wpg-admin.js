@@ -3,6 +3,7 @@
     const btnRun = $('#wpg-run');
     const btnSave = $('#wpg-save');
     const textareaCode = $('#wpg_code');
+    const textareaResponse = $('#wpg_response');
     let lastCode = '';
     const datasetList = $('#wpg_dataset_list');
 
@@ -25,6 +26,7 @@
     btnGenerate.on('click', function (e) {
         e.preventDefault();
         btnGenerate.prop('disabled', true);
+        textareaResponse.val('');
 
         const data = {
             action: 'wpg_generate_code',
@@ -35,6 +37,7 @@
 
         $.post(WPG_Ajax.ajax_url, data)
             .done(res => {
+                textareaResponse.val(JSON.stringify(res, null, 2));
                 if (res.success) {
                     lastCode = res.data.code;
                     textareaCode.val(lastCode);
@@ -43,7 +46,10 @@
                     alert(res.data.message);
                 }
             })
-            .fail(() => alert('Error en la solicitud.'))
+            .fail(() => {
+                textareaResponse.val('Error en la solicitud.');
+                alert('Error en la solicitud.');
+            })
             .always(() => btnGenerate.prop('disabled', false));
     });
 
