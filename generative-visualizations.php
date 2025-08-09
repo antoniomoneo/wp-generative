@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Generative Visualizations
  * Description: Crea y gestiona visualizaciones generativas con D3.js o P5.js.
- * Version:     0.2.0
+ * Version:     0.2.2
  * Requires at least: 5.0
  * Author:      KGMT Knowledge Services
  */
@@ -10,7 +10,7 @@
 if ( defined( 'GV_PLUGIN_VERSION' ) ) {
     return;
 }
-define( 'GV_PLUGIN_VERSION', '0.2.0' );
+define( 'GV_PLUGIN_VERSION', '0.2.2' );
 
 // Attempt to load OpenAI API key from environment if not defined.
 if ( ! defined( 'GV_OPENAI_API_KEY' ) ) {
@@ -119,6 +119,7 @@ add_action( 'admin_menu', 'gv_add_sandbox_page' );
 function gv_render_sandbox_page() { ?>
     <div class="wrap">
         <h1>Sandbox Generativa</h1>
+        <p>Versión: <?php echo esc_html( GV_PLUGIN_VERSION ); ?></p>
         <p><textarea id="gv-sandbox-prompt" rows="3" style="width:100%;" placeholder="Describe la visualización..."></textarea></p>
         <p><button id="gv-sandbox-generate" class="button">Generar</button></p>
         <p><textarea id="gv-sandbox-code" rows="10" style="width:100%;" placeholder="// Código p5.js"></textarea></p>

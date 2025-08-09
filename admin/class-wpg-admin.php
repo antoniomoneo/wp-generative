@@ -203,6 +203,7 @@ class WPG_Admin {
         ?>
         <div class="wrap">
             <h1><?php esc_html_e( 'Sandbox', 'wpg' ); ?></h1>
+            <p><?php printf( esc_html__( 'Versión: %s', 'wpg' ), esc_html( WPG_PLUGIN_VERSION ) ); ?></p>
             <form id="wpg-sandbox-form">
                 <p><label for="wpg_prompt"><?php esc_html_e( 'Prompt', 'wpg' ); ?></label></p>
                 <p><textarea id="wpg_prompt" rows="4" cols="50"><?php esc_html_e( 'crea el código p5.js para una visualización generativa del dataset en la URL.', 'wpg' ); ?></textarea></p>
@@ -269,7 +270,12 @@ class WPG_Admin {
         $code   = $openai->get_p5js_code( $combined_prompt );
 
         if ( is_wp_error( $code ) ) {
-            wp_send_json_error( [ 'message' => $code->get_error_message() ] );
+            wp_send_json_error(
+                [
+                    'message'      => $code->get_error_message(),
+                    'api_response' => $code->get_error_data(),
+                ]
+            );
         }
         wp_send_json_success( [ 'code' => $code ] );
     }
