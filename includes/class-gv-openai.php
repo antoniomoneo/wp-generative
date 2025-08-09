@@ -9,8 +9,9 @@ class GV_OpenAI_Client {
        protected $assistant_id; // Debe configurarse en Ajustes del plugin.
 
        public function __construct( $args = array() ) {
-               $this->api_key      = isset( $args['api_key'] ) ? $args['api_key'] : (string) get_option( 'gv_openai_api_key', '' );
-               $this->assistant_id = isset( $args['assistant_id'] ) ? $args['assistant_id'] : (string) get_option( 'gv_openai_assistant_id', '' );
+               $creds = wpg_get_openai_credentials();
+               $this->api_key      = isset( $args['api_key'] ) ? $args['api_key'] : $creds['api_key'];
+               $this->assistant_id = isset( $args['assistant_id'] ) ? $args['assistant_id'] : $creds['assistant_id'];
        }
 
        /**

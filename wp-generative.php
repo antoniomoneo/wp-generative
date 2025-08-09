@@ -54,6 +54,7 @@ if ( ! defined( 'WPG_PLUGIN_VERSION' ) ) {
 }
 
 // Autoload / includes.
+require_once plugin_dir_path( __FILE__ ) . 'includes/credentials.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-gv-dataset.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-gv-openai.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/admin-dataset-setting.php';
