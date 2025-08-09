@@ -1,5 +1,21 @@
 (function ($) {
+    let cm = null;
     // === WP Generative: Actualizar código con TODO el dataset ===
+    function initCodeEditor() {
+        const textarea = document.getElementById('wpgen-code');
+        if (!textarea) return;
+        const settings = window.wpgEditorSettings || {};
+        settings.codemirror = Object.assign({}, settings.codemirror || {}, {
+            mode: 'javascript',
+            lineNumbers: true,
+            matchBrackets: true,
+            styleActiveLine: true,
+            indentUnit: 2,
+            tabSize: 2,
+        });
+        cm = wp.codeEditor.initialize(textarea, settings).codemirror;
+    }
+
     async function ensurePapaParseLoaded() {
         if (window.Papa) return;
         await new Promise((resolve, reject) => {
@@ -122,6 +138,8 @@
     const textareaCode = $('#wpgen-code');
     const textareaRequest = $('#wpg_request');
     const textareaResponse = $('#wpg_response');
+    function getCode() { return cm ? cm.getValue() : textareaCode.val(); }
+    function setCode(v) { if (cm) { cm.setValue(v); } else { textareaCode.val(v); } }
     let lastCode = '';
     const datasetList = $('#wpg_dataset_list');
     const promptField = $('#wpg_prompt');
@@ -201,7 +219,7 @@
                 if (res.success) {
                     textareaResponse.val(JSON.stringify(res, null, 2));
                     lastCode = res.data.code;
-                    textareaCode.val(lastCode);
+                    setCode(lastCode);
                     renderSketch(lastCode);
                 } else {
                     textareaResponse.val(res.data.api_response || JSON.stringify(res, null, 2));
@@ -221,7 +239,7 @@
 
     btnRun.on('click', function (e) {
         e.preventDefault();
-        const code = textareaCode.val();
+        const code = getCode();
         if (code.trim() === '') {
             alert('No hay código para ejecutar');
             return;
@@ -254,7 +272,7 @@
 
     function renderSketch(code) {
         lastCode = code;
-        textareaCode.val(code);
+        setCode(code);
         $('#wpg-preview').empty();
         $('#wpg-controls').empty();
 
@@ -312,7 +330,7 @@
                 `$1 ${varName} = ${value}`
             );
             lastCode = code;
-            textareaCode.val(code);
+            setCode(code);
             renderIframe(code);
         }
 
@@ -322,5 +340,6 @@
             iframe[0].srcdoc = doc;
         }
     }
+    $(initCodeEditor);
 })(jQuery);
 
