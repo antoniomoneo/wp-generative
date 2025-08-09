@@ -78,13 +78,18 @@
 
         $.post(WPG_Ajax.ajax_url, data)
             .done(res => {
-                textareaResponse.val(JSON.stringify(res, null, 2));
                 if (res.success) {
+                    textareaResponse.val(JSON.stringify(res, null, 2));
                     lastCode = res.data.code;
                     textareaCode.val(lastCode);
                     renderSketch(lastCode);
                 } else {
-                    alert(res.data.message);
+                    textareaResponse.val(res.data.api_response || JSON.stringify(res, null, 2));
+                    let msg = res.data.message || 'Error';
+                    if (res.data.api_response) {
+                        msg += '\n\n' + res.data.api_response;
+                    }
+                    alert(msg);
                 }
             })
             .fail(() => {

@@ -42,13 +42,19 @@ class WPG_OpenAI {
             return $response;
         }
 
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+        $body_raw = wp_remote_retrieve_body( $response );
+        $body     = json_decode( $body_raw, true );
+
+        if ( wp_remote_retrieve_response_code( $response ) >= 400 ) {
+            return new WP_Error( 'api_error', 'Error en la API', $body_raw );
+        }
+
         $code = trim( $body['output_text'] ?? '' );
         if ( '' === $code && isset( $body['output'][0]['content'][0]['text'] ) ) {
             $code = trim( $body['output'][0]['content'][0]['text'] );
         }
         if ( '' === $code ) {
-            return new WP_Error( 'no_code', 'La respuesta no contiene código p5.js' );
+            return new WP_Error( 'no_code', 'La respuesta no contiene código p5.js', $body_raw );
         }
 
         // Comprueba que existan funciones básicas de p5.js para validar el sketch.
@@ -56,7 +62,7 @@ class WPG_OpenAI {
         $has_draw   = preg_match( '/function\s+draw\s*\(/i', $code );
         $has_canvas = preg_match( '/createCanvas\s*\(/i', $code );
         if ( ! ( $has_setup && $has_draw && $has_canvas ) ) {
-            return new WP_Error( 'no_code', 'La respuesta no contiene código p5.js válido' );
+            return new WP_Error( 'no_code', 'La respuesta no contiene código p5.js válido', $body_raw );
         }
 
         return $code;
