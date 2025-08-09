@@ -91,10 +91,13 @@ class WPG_Admin {
     }
 
     public function enqueue_assets( $hook ) {
-        $is_sandbox_page = ( isset( $_GET['page'] ) && 'wpg-sandbox' === $_GET['page'] );
-        if ( 'wpg-settings_page_wpg-sandbox' !== $hook && ! $is_sandbox_page ) {
+        $page          = isset( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : '';
+        $allowed_hooks = [ 'wpg-settings_page_wpg-sandbox', 'wpg-settings_page_wp-generative' ];
+        $allowed_pages = [ 'wpg-sandbox', 'wp-generative' ];
+        if ( ! in_array( $hook, $allowed_hooks, true ) && ! in_array( $page, $allowed_pages, true ) ) {
             return;
         }
+
         wp_enqueue_script(
             'p5',
             plugin_dir_url( __FILE__ ) . '../assets/js/p5.min.js',
