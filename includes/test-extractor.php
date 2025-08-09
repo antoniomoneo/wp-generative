@@ -1,8 +1,8 @@
 <?php
+// Test manual del extractor: /?td_test_extractor=1 (solo admin)
 add_action('init', function(){
   if (!isset($_GET['td_test_extractor']) || !current_user_can('manage_options')) return;
 
-  // Simula respuesta SIN fences
   $assistant_no_fences = [
     'content' => [
       [
@@ -12,7 +12,6 @@ add_action('init', function(){
     ]
   ];
 
-  // Simula respuesta CON fences
   $assistant_with_fences = [
     'content' => [
       [
@@ -29,10 +28,7 @@ add_action('init', function(){
   header('Content-Type: text/html; charset=utf-8');
   echo '<h1>TD Test Extractor</h1>';
 
-  foreach ([
-    'SIN fences' => $assistant_no_fences,
-    'CON fences' => $assistant_with_fences
-  ] as $label => $msg) {
+  foreach (['SIN fences' => $assistant_no_fences, 'CON fences' => $assistant_with_fences] as $label => $msg) {
     $raw = td_get_assistant_text($msg);
     $code = td_extract_p5_code($raw);
     echo "<h2>Test $label</h2>";
