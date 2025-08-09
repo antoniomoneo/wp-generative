@@ -8,71 +8,24 @@
 
 // === Assets para visor de código con numeración y resaltado ===
 function wpgen_enqueue_code_assets( $hook = '' ) {
-    // Cargamos en admin y frontend (ligero, desde CDN).
-    // Prism CSS (tema "tomorrow" similar a editor p5)
-    wp_enqueue_style(
-        'prism-css',
-        'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css',
-        array(),
-        '1.29.0'
-    );
-    // Plugins de Prism: line numbers + toolbar
-    wp_enqueue_style(
-        'prism-line-numbers-css',
-        'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css',
-        array('prism-css'),
-        '1.29.0'
-    );
-
-    // JS Prism core + lenguaje + plugins
-    wp_enqueue_script(
-        'prism-core',
-        'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js',
-        array(),
-        '1.29.0',
-        true
-    );
-    wp_enqueue_script(
-        'prism-js',
-        'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js',
-        array('prism-core'),
-        '1.29.0',
-        true
-    );
-    wp_enqueue_script(
-        'prism-line-numbers',
-        'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js',
-        array('prism-core'),
-        '1.29.0',
-        true
-    );
-    wp_enqueue_script(
-        'prism-toolbar',
-        'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/toolbar/prism-toolbar.min.js',
-        array('prism-core'),
-        '1.29.0',
-        true
-    );
-    wp_enqueue_script(
-        'prism-copy',
-        'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/copy-to-clipboard/prism-copy-to-clipboard.min.js',
-        array('prism-toolbar'),
-        '1.29.0',
-        true
-    );
-
-    // Estilos propios del visor
+    // Cargamos en admin y frontend usando copias locales ligeras.
     wp_enqueue_style(
         'wpgen-code-viewer-css',
         plugins_url('assets/css/wpgen-code-viewer.css', __FILE__),
-        array('prism-css','prism-line-numbers-css'),
+        array(),
         '1.0.0'
     );
-    // Lógica del visor + función global wpgenShowCode
+    wp_enqueue_script(
+        'prism-core',
+        plugins_url('assets/js/prism.js', __FILE__),
+        array(),
+        '1.0.0',
+        true
+    );
     wp_enqueue_script(
         'wpgen-code-viewer',
         plugins_url('assets/js/wpgen-code-viewer.js', __FILE__),
-        array('prism-core','prism-js','prism-line-numbers','prism-toolbar','prism-copy'),
+        array('prism-core'),
         '1.0.0',
         true
     );
