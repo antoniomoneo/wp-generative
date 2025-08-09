@@ -10,11 +10,13 @@ class WP_Generative_Admin {
   }
 
   public function enqueue_assets( $hook ) {
-    if ( $hook !== 'toplevel_page_wp-generative' ) { return; }
-    wp_enqueue_script( 'wp-generative-admin', plugin_dir_url( __FILE__ ) . 'js/wp-generative-admin.js', array( 'jquery', 'wp-codemirror' ), '1.0', true );
-    wp_enqueue_style( 'wp-generative-admin', plugin_dir_url( __FILE__ ) . 'css/wp-generative-admin.css', array(), '1.0' );
+    // Solo cargar en el generador, nunca en Settings
+    $is_generator_screen = ( strpos( $hook, 'wp-generative' ) !== false ) && ( strpos( $hook, 'wp-generative-settings' ) === false );
+    if ( ! $is_generator_screen ) { return; }
 
-    // Habilitar CodeMirror con modo JS
+    wp_enqueue_style( 'wp-generative-admin', plugin_dir_url( __FILE__ ) . 'css/wp-generative-admin.css', array(), '1.1' );
+    wp_enqueue_script( 'wp-generative-admin', plugin_dir_url( __FILE__ ) . 'js/wp-generative-admin.js', array( 'jquery', 'wp-codemirror' ), '1.1', true );
+
     $settings = wp_enqueue_code_editor( array( 'type' => 'text/javascript' ) );
     if ( $settings ) {
       wp_localize_script( 'wp-generative-admin', 'tdCodeEditorSettings', $settings );
@@ -27,16 +29,50 @@ class WP_Generative_Admin {
   }
 
   public function register_admin_page() {
-    add_menu_page( 'Generador p5.js', 'Generador p5.js', 'manage_options', 'wp-generative', array( $this, 'render_admin' ) );
+    // Top-level: WP Generative
+    add_menu_page(
+      'WP Generative',
+      'WP Generative',
+      'manage_options',
+      'wp-generative',
+      array( $this, 'render_generator' ),
+      'dashicons-admin-generic',
+      58
+    );
+
+    // Submenú Generador
+    add_submenu_page(
+      'wp-generative',
+      'Generador p5.js',
+      'Generador p5.js',
+      'manage_options',
+      'wp-generative',
+      array( $this, 'render_generator' )
+    );
+
+    // Submenú Settings
+    add_submenu_page(
+      'wp-generative',
+      'Settings',
+      'Settings',
+      'manage_options',
+      'wp-generative-settings',
+      array( $this, 'render_settings' )
+    );
   }
 
-  public function render_admin() {
+  public function render_generator() {
     include plugin_dir_path( __FILE__ ) . 'partials/wp-generative-admin-display.php';
   }
 
-  // Guardar opción simple de dataset por comodidad (también se usa desde input)
+  public function render_settings() {
+    include plugin_dir_path( __FILE__ ) . 'partials/wp-generative-settings.php';
+  }
+
   public function admin_init() {
-    register_setting( 'general', 'td_dataset_url', array( 'type' => 'string', 'sanitize_callback' => 'esc_url_raw' ) );
+    register_setting( 'wp_generative_options', 'td_openai_api_key', array( 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'wp_generative_options', 'td_assistant_id', array( 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'wp_generative_options', 'td_dataset_url', array( 'type' => 'string', 'sanitize_callback' => 'esc_url_raw' ) );
   }
 
   // AJAX handler
