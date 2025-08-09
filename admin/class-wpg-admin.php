@@ -250,7 +250,7 @@ class WPG_Admin {
     public function ajax_generate_code() {
         check_ajax_referer( 'wpg_nonce' );
 
-        $api_key    = sanitize_text_field( $_POST['api_key'] ?? $this->get_api_key() );
+        $api_key     = sanitize_text_field( $_POST['api_key'] ?? $this->get_api_key() );
         $user_prompt = sanitize_textarea_field( $_POST['prompt'] ?? '' );
         $dataset_url = esc_url_raw( $_POST['dataset_url'] ?? '' );
 
@@ -258,20 +258,12 @@ class WPG_Admin {
             wp_send_json_error( [ 'message' => __( 'Faltan credenciales.', 'wpg' ) ] );
         }
 
-        $table_sample = [];
-        if ( $dataset_url ) {
-            $dataset_response = wp_remote_get( $dataset_url );
-            if ( is_wp_error( $dataset_response ) ) {
-                wp_send_json_error( [ 'message' => __( 'No se pudo obtener el dataset.', 'wpg' ) ] );
-            }
-            $body         = wp_remote_retrieve_body( $dataset_response );
-            $table_sample = $this->parse_table_sample( $body );
-        }
+        $dataset_text = GV_Dataset_Helper::get_sample( $dataset_url );
 
         $prompt = $this->get_base_instructions() . "\n\n" . $user_prompt;
 
         $openai = new WPG_OpenAI( $api_key );
-        $code   = $openai->get_p5js_code( $prompt, $table_sample );
+        $code   = $openai->get_p5js_code( $prompt, $dataset_text );
 
         if ( is_wp_error( $code ) ) {
             wp_send_json_error( [ 'message' => $code->get_error_message() ] );

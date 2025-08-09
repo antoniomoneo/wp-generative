@@ -10,21 +10,29 @@ function wpgen_get_p5js_from_openai(array $args) {
     $timeout = intval(get_option('wpgen_openai_timeout', 60));
     if ($timeout <= 0) $timeout = 60;
 
+    $data_url = esc_url_raw( $args['data_url'] ?? '' );
+    $dataset_text = GV_Dataset_Helper::get_sample( $data_url );
+    $user_prompt  = $args['user_prompt'] ?? '';
+    $width        = intval( $args['width']  ?? 800 );
+    $height       = intval( $args['height'] ?? 500 );
+    $data_format  = $args['data_format'] ?? 'auto';
+
+    $input_text = "DATASET:\n{$dataset_text}\n\nUSER REQUEST:\n{$user_prompt}\n\nPARAMS:\n" . wp_json_encode( [
+        'data_url'    => $data_url,
+        'data_format' => $data_format,
+        'width'       => $width,
+        'height'      => $height,
+    ] );
+
     $payload = [
         'model' => $model,
         'input' => [[
-            'role' => 'user',
+            'role'    => 'user',
             'content' => [[
                 'type' => 'text',
-                'text' => wp_json_encode([
-                    'data_url'    => $args['data_url']    ?? '',
-                    'data_format' => $args['data_format'] ?? 'auto',
-                    'user_prompt' => $args['user_prompt'] ?? '',
-                    'width'       => intval($args['width']  ?? 800),
-                    'height'      => intval($args['height'] ?? 500),
-                ])
-            ]]
-        ]]
+                'text' => $input_text,
+            ]],
+        ]],
     ];
 
     $res = wp_remote_post('https://api.openai.com/v1/responses', [

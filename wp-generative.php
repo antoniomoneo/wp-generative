@@ -10,6 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+require_once __DIR__ . '/includes/class-gv-dataset.php';
 require_once __DIR__ . '/includes/class-wpg-openai.php';
 require_once __DIR__ . '/includes/class-wpg-visualization.php';
 require_once __DIR__ . '/admin/class-wpg-admin.php';
@@ -24,6 +25,7 @@ WPG_Admin::get_instance();
 add_shortcode('p5js_visual', function ($atts) {
     $atts = shortcode_atts([
         'data_url'    => '',
+        'dataset_url' => '',
         'user_prompt' => '',
         'data_format' => 'auto',
         'width'       => 800,
@@ -31,7 +33,8 @@ add_shortcode('p5js_visual', function ($atts) {
         'cache'       => 30,
     ], $atts, 'p5js_visual');
 
-    $data_url    = esc_url_raw($atts['data_url']);
+    // Allow dataset_url as alias of data_url.
+    $data_url    = esc_url_raw($atts['dataset_url'] ? $atts['dataset_url'] : $atts['data_url']);
     $user_prompt = sanitize_text_field($atts['user_prompt']);
     $data_format = in_array($atts['data_format'], ['auto','csv','json'], true) ? $atts['data_format'] : 'auto';
     $width       = intval($atts['width']);
@@ -83,4 +86,5 @@ require_once plugin_dir_path(__FILE__) . 'includes/enqueue.php';
 require_once plugin_dir_path(__FILE__) . 'includes/openai.php';
 if (is_admin()) {
     require_once plugin_dir_path(__FILE__) . 'includes/settings.php';
+    require_once plugin_dir_path(__FILE__) . 'includes/admin-dataset-setting.php';
 }
