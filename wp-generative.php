@@ -6,6 +6,92 @@
  * Author:            KGMT Knowledge Services
  */
 
+// === Assets para visor de código con numeración y resaltado ===
+function wpgen_enqueue_code_assets( $hook = '' ) {
+    // Cargamos en admin y frontend (ligero, desde CDN).
+    // Prism CSS (tema "tomorrow" similar a editor p5)
+    wp_enqueue_style(
+        'prism-css',
+        'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css',
+        array(),
+        '1.29.0'
+    );
+    // Plugins de Prism: line numbers + toolbar
+    wp_enqueue_style(
+        'prism-line-numbers-css',
+        'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css',
+        array('prism-css'),
+        '1.29.0'
+    );
+
+    // JS Prism core + lenguaje + plugins
+    wp_enqueue_script(
+        'prism-core',
+        'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js',
+        array(),
+        '1.29.0',
+        true
+    );
+    wp_enqueue_script(
+        'prism-js',
+        'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js',
+        array('prism-core'),
+        '1.29.0',
+        true
+    );
+    wp_enqueue_script(
+        'prism-line-numbers',
+        'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js',
+        array('prism-core'),
+        '1.29.0',
+        true
+    );
+    wp_enqueue_script(
+        'prism-toolbar',
+        'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/toolbar/prism-toolbar.min.js',
+        array('prism-core'),
+        '1.29.0',
+        true
+    );
+    wp_enqueue_script(
+        'prism-copy',
+        'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/copy-to-clipboard/prism-copy-to-clipboard.min.js',
+        array('prism-toolbar'),
+        '1.29.0',
+        true
+    );
+
+    // Estilos propios del visor
+    wp_enqueue_style(
+        'wpgen-code-viewer-css',
+        plugins_url('assets/css/wpgen-code-viewer.css', __FILE__),
+        array('prism-css','prism-line-numbers-css'),
+        '1.0.0'
+    );
+    // Lógica del visor + función global wpgenShowCode
+    wp_enqueue_script(
+        'wpgen-code-viewer',
+        plugins_url('assets/js/wpgen-code-viewer.js', __FILE__),
+        array('prism-core','prism-js','prism-line-numbers','prism-toolbar','prism-copy'),
+        '1.0.0',
+        true
+    );
+}
+add_action('admin_enqueue_scripts', 'wpgen_enqueue_code_assets');
+add_action('wp_enqueue_scripts', 'wpgen_enqueue_code_assets');
+
+// Shortcode opcional para mostrar el visor donde queramos en frontend: [wpgen_code_viewer]
+function wpgen_code_viewer_shortcode() {
+    ob_start();
+    ?>
+    <div class="wpgen-codewrap">
+      <pre class="line-numbers"><code id="wpgen-p5-code" class="language-javascript"></code></pre>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+add_shortcode('wpgen_code_viewer', 'wpgen_code_viewer_shortcode');
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }

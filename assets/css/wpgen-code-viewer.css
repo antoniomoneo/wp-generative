@@ -1,0 +1,20 @@
+.wpgen-codewrap {
+  margin: 12px 0;
+}
+.wpgen-codewrap pre {
+  max-height: 70vh;
+  overflow: auto;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  font-size: 13px;
+  line-height: 1.5;
+}
+/* Acentúa variables/funciones comunes de p5 (heurístico con Prism) */
+code.language-javascript .token.function {
+  font-weight: 600;
+}
+code.language-javascript .token.constant,
+code.language-javascript .token.variable {
+  font-weight: 500;
+}
+
