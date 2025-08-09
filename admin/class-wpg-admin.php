@@ -219,9 +219,18 @@ class WPG_Admin {
             <p><label for="wpg_response"><?php esc_html_e( 'Respuesta del asistente', 'wpg' ); ?></label></p>
             <p><textarea id="wpg_response" rows="6" cols="60" placeholder="<?php esc_attr_e( 'Aquí aparecerá la respuesta del asistente...', 'wpg' ); ?>"></textarea></p>
             <div id="wpg-editor" style="display:flex;gap:1em;margin-top:2em;">
-                <textarea id="wpg_code" style="width:50%;height:400px;"></textarea>
+                <textarea id="wpgen-code" style="width:50%;height:400px;"></textarea>
                 <div id="wpg-preview" style="flex:1;height:400px;border:1px solid #ccc;"></div>
             </div>
+            <div style="margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <button id="wpgen-btn-update-code" type="button" class="button button-primary">
+                    <?php esc_html_e( 'Actualizar código (reemplazar let data…)', 'wpg' ); ?>
+                </button>
+                <small id="wpgen-update-hint" style="opacity:.75">
+                    <?php esc_html_e( 'Usará la URL del dataset para regenerar data o years con todos los registros.', 'wpg' ); ?>
+                </small>
+            </div>
+            <input type="url" id="wpgen-dataset-url" placeholder="https://raw.githubusercontent.com/usuario/repo/main/dataset.csv" style="margin-top:6px; width:100%" />
             <p><button id="wpg-run" class="button"><?php esc_html_e( 'Vista previa', 'wpg' ); ?></button></p>
             <div id="wpg-controls" style="margin-top:1em;"></div>
             <h2><?php esc_html_e( 'Guardar visualización', 'wpg' ); ?></h2>
