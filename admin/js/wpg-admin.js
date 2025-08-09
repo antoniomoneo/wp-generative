@@ -126,11 +126,14 @@
     const datasetList = $('#wpg_dataset_list');
     const promptField = $('#wpg_prompt');
     const datasetField = $('#wpg_dataset');
+    const datasetUrlField = $('#wpgen-dataset-url');
     const defaultPrompt = 'crea el código p5.js para una visualización generativa del dataset en la URL.';
     promptField.val(defaultPrompt);
+    datasetUrlField.val(datasetField.val());
 
     datasetField.on('change', function () {
         const url = $(this).val();
+        if (datasetUrlField.length) datasetUrlField.val(url);
         if (!url) {
             promptField.val(defaultPrompt);
             return;
