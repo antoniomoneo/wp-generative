@@ -213,6 +213,8 @@ class WPG_Admin {
                 </p>
                 <p><button type="button" id="wpg-generate" class="button button-primary"><?php esc_html_e( 'Generar', 'wpg' ); ?></button></p>
             </form>
+            <p><label for="wpg_request"><?php esc_html_e( 'Llamada al API', 'wpg' ); ?></label></p>
+            <p><textarea id="wpg_request" rows="6" cols="60" readonly></textarea></p>
             <p><label for="wpg_response"><?php esc_html_e( 'Respuesta del asistente', 'wpg' ); ?></label></p>
             <p><textarea id="wpg_response" rows="6" cols="60" placeholder="<?php esc_attr_e( 'Aquí aparecerá la respuesta del asistente...', 'wpg' ); ?>"></textarea></p>
             <div id="wpg-editor" style="display:flex;gap:1em;margin-top:2em;">
