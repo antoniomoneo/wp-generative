@@ -194,18 +194,3 @@ if (is_admin() && file_exists(plugin_dir_path(__FILE__).'includes/test-extractor
 
 require_once plugin_dir_path(__FILE__) . 'inc/api.php';
 
-add_action('admin_menu', function(){
-  add_submenu_page(
-    'wpg-settings',
-    'WP Generative',
-    'WP Generative',
-    'manage_options',
-    'wp-generative',
-    'tdg_render_admin_page'
-  );
-}, 20);
-
-function tdg_render_admin_page() {
-  WPG_Admin::get_instance()->render_sandbox_page();
-}
-

@@ -92,8 +92,8 @@ class WPG_Admin {
 
     public function enqueue_assets( $hook ) {
         $page          = isset( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : '';
-        $allowed_hooks = [ 'wpg-settings_page_wpg-sandbox', 'wpg-settings_page_wp-generative' ];
-        $allowed_pages = [ 'wpg-sandbox', 'wp-generative' ];
+        $allowed_hooks = [ 'wpg-settings_page_wpg-sandbox' ];
+        $allowed_pages = [ 'wpg-sandbox' ];
         if ( ! in_array( $hook, $allowed_hooks, true ) && ! in_array( $page, $allowed_pages, true ) ) {
             return;
         }
