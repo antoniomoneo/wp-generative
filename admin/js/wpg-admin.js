@@ -1,8 +1,125 @@
 (function ($) {
+    // === WP Generative: Actualizar código con TODO el dataset ===
+    async function ensurePapaParseLoaded() {
+        if (window.Papa) return;
+        await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js';
+            s.onload = resolve;
+            s.onerror = () => reject(new Error('No se pudo cargar PapaParse'));
+            document.head.appendChild(s);
+        });
+    }
+
+    function detectYearColumn(rows) {
+        if (!rows?.length) return null;
+        const first = rows[0];
+        const keys = Object.keys(first);
+        const lower = keys.map((k) => k.toLowerCase());
+        const candidates = ['año', 'ano', 'year', 'fecha', 'date'];
+        for (const c of candidates) {
+            const i = lower.indexOf(c);
+            if (i !== -1) return keys[i];
+        }
+        for (const k of keys) {
+            for (let r = 0; r < Math.min(rows.length, 50); r++) {
+                const n = Number(rows[r][k]);
+                if (Number.isFinite(n) && n >= 1800 && n <= 2100) return k;
+            }
+        }
+        return null;
+    }
+
+    function buildJsLiteral(rows, mode = 'rows', yearCol = null) {
+        if (mode === 'years') {
+            const col = yearCol || detectYearColumn(rows) || 'year';
+            const set = new Set();
+            for (const r of rows) {
+                const y = r[col];
+                const n = Number(y);
+                if (Number.isFinite(n)) set.add(n);
+            }
+            const arr = Array.from(set).sort((a, b) => a - b);
+            return `const years = [${arr.join(',')}]` + ';';
+        }
+        const cols = rows.length ? Object.keys(rows[0]) : [];
+        const sanitized = rows.map((r) => {
+            const o = {};
+            for (const c of cols) o[c] = r[c];
+            return o;
+        });
+        return `const data = ${JSON.stringify(sanitized)}` + ';';
+    }
+
+    function replaceDataOrYearsChunk(sourceCode, newChunk) {
+        const reData = /(let|const|var)\s+data\s*=\s*\[[\s\S]*?\];/m;
+        if (reData.test(sourceCode)) return sourceCode.replace(reData, newChunk);
+        const reYears = /(let|const|var)\s+years\s*=\s*\[[\s\S]*?\];/m;
+        if (reYears.test(sourceCode)) return sourceCode.replace(reYears, newChunk);
+        return `${newChunk}\n${sourceCode}`;
+    }
+
+    async function fetchFullCsv(url) {
+        await ensurePapaParseLoaded();
+        return new Promise((resolve, reject) => {
+            Papa.parse(url, {
+                download: true,
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                worker: true,
+                complete: (res) => resolve(res.data),
+                error: (err) => reject(err),
+            });
+        });
+    }
+
+    document.getElementById('wpgen-btn-update-code')?.addEventListener('click', async () => {
+        const codeEl = document.getElementById('wpgen-code');
+        const urlEl =
+            document.getElementById('wpgen-dataset-url') || document.getElementById('wpg_dataset');
+        const hintEl = document.getElementById('wpgen-update-hint');
+
+        const source = codeEl?.value || '';
+        const datasetUrl = urlEl?.value?.trim();
+
+        if (!source) {
+            alert('No hay código para actualizar.');
+            return;
+        }
+        if (!datasetUrl) {
+            alert('Falta la URL del dataset.');
+            return;
+        }
+
+        try {
+            if (hintEl) hintEl.textContent = 'Descargando y parseando dataset…';
+            const rows = await fetchFullCsv(datasetUrl);
+            if (!rows?.length) throw new Error('El CSV no tiene filas.');
+
+            let newChunk = buildJsLiteral(rows, 'rows');
+
+            const hasData = /(let|const|var)\s+data\s*=/.test(source);
+            const hasYears = /(let|const|var)\s+years\s*=/.test(source);
+            if (!hasData && hasYears) {
+                const yearCol = detectYearColumn(rows);
+                newChunk = buildJsLiteral(rows, 'years', yearCol);
+            }
+
+            const updated = replaceDataOrYearsChunk(source, newChunk);
+            codeEl.value = updated;
+            if (hintEl) hintEl.textContent = 'Código actualizado con el dataset completo.';
+        } catch (e) {
+            console.error(e);
+            alert('Error: ' + (e?.message || e));
+            if (hintEl) hintEl.textContent = 'Hubo un problema al actualizar el código.';
+        }
+    });
+
     const btnGenerate = $('#wpg-generate');
     const btnRun = $('#wpg-run');
     const btnSave = $('#wpg-save');
-    const textareaCode = $('#wpg_code');
+    const textareaCode = $('#wpgen-code');
     const textareaRequest = $('#wpg_request');
     const textareaResponse = $('#wpg_response');
     let lastCode = '';
