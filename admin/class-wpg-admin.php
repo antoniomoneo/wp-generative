@@ -9,7 +9,6 @@ class WPG_Admin {
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
         add_action( 'wp_ajax_wpg_generate_code', [ $this, 'ajax_generate_code' ] );
         add_action( 'wp_ajax_wpg_save_visualization', [ $this, 'ajax_save_visualization' ] );
-        add_action( 'admin_init', [ $this, 'register_settings' ] );
     }
 
     public static function get_instance() {
@@ -17,13 +16,7 @@ class WPG_Admin {
     }
 
     private function get_api_key() {
-        $api_key = get_option( 'td_openai_api_key', '' );
-        if ( ! $api_key ) {
-            $api_key = get_option( 'wpg_api_key', '' );
-        }
-        if ( ! $api_key ) {
-            $api_key = get_option( 'wpgen_openai_api_key', '' );
-        }
+        $api_key = get_option( 'wpg_api_key', '' );
         if ( $api_key ) {
             return $api_key;
         }
@@ -34,10 +27,16 @@ class WPG_Admin {
         return $env_key ? $env_key : '';
     }
 
-    public function register_settings() {
-        register_setting( 'wp_generative_options', 'td_openai_api_key', [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ] );
-        register_setting( 'wp_generative_options', 'td_assistant_id', [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ] );
-        register_setting( 'wp_generative_options', 'td_dataset_url', [ 'type' => 'string', 'sanitize_callback' => 'esc_url_raw' ] );
+    private function get_assistant_id() {
+        $assistant = get_option( 'wpg_assistant_id', '' );
+        if ( $assistant ) {
+            return $assistant;
+        }
+        if ( defined( 'OPENAI_ASSISTANT_ID' ) ) {
+            return OPENAI_ASSISTANT_ID;
+        }
+        $env_assistant = getenv( 'OPENAI_ASSISTANT_ID' );
+        return $env_assistant ? $env_assistant : '';
     }
 
     private function get_base_instructions() {
@@ -71,11 +70,11 @@ class WPG_Admin {
     }
 
     public function register_menu() {
-        $main_slug = 'wp-generative';
+        $main_slug = 'wpg-settings';
 
         add_menu_page(
-            __( 'WP Generative', 'wpg' ),
-            __( 'WP Generative', 'wpg' ),
+            __( 'Gen Viz', 'wpg' ),
+            __( 'Gen Viz', 'wpg' ),
             'manage_options',
             $main_slug,
             [ $this, 'render_settings_page' ],
@@ -114,7 +113,8 @@ class WPG_Admin {
     }
 
     public function enqueue_assets( $hook ) {
-        if ( ! ( isset( $_GET['page'] ) && 'wpg-sandbox' === $_GET['page'] ) ) {
+        $is_sandbox_page = ( isset( $_GET['page'] ) && 'wpg-sandbox' === $_GET['page'] );
+        if ( 'wpg-settings_page_wpg-sandbox' !== $hook && ! $is_sandbox_page ) {
             return;
         }
         wp_enqueue_script(
@@ -138,8 +138,56 @@ class WPG_Admin {
         ] );
     }
 
+    public function render_api_settings_page() {
+        $saved            = false;
+        $api_key_editable = ! defined( 'OPENAI_API_KEY' ) && ! getenv( 'OPENAI_API_KEY' );
+        if ( isset( $_POST['wpg_api_submit'] ) && check_admin_referer( 'wpg_save_api' ) ) {
+            if ( $api_key_editable ) {
+                update_option( 'wpg_api_key', sanitize_text_field( $_POST['wpg_api_key'] ?? '' ) );
+            }
+            update_option( 'wpg_assistant_id', sanitize_text_field( $_POST['wpg_assistant_id'] ?? '' ) );
+            $saved = true;
+        }
+        $api_key       = $this->get_api_key();
+        $assistant_id  = $this->get_assistant_id();
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e( 'API Settings', 'wpg' ); ?></h1>
+            <?php if ( $saved ) : ?>
+                <div class="updated notice"><p><?php esc_html_e( 'Opciones guardadas.', 'wpg' ); ?></p></div>
+            <?php endif; ?>
+            <form method="post">
+                <?php wp_nonce_field( 'wpg_save_api' ); ?>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="wpg_api_key">API Key</label></th>
+                        <td>
+                            <?php if ( $api_key_editable ) : ?>
+                                <input type="password" id="wpg_api_key" name="wpg_api_key" value="<?php echo esc_attr( $api_key ); ?>" size="40" />
+                            <?php else : ?>
+                                <input type="text" id="wpg_api_key" value="********" size="40" readonly />
+                                <p class="description"><?php esc_html_e( 'Definida por el entorno.', 'wpg' ); ?></p>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="wpg_assistant_id">Assistant ID</label></th>
+                        <td><input type="text" id="wpg_assistant_id" name="wpg_assistant_id" value="<?php echo esc_attr( $assistant_id ); ?>" size="40" /></td>
+                    </tr>
+                </table>
+                <?php submit_button( __( 'Guardar', 'wpg' ), 'primary', 'wpg_api_submit' ); ?>
+            </form>
+        </div>
+        <?php
+    }
+
     public function render_settings_page() {
-        include plugin_dir_path( __FILE__ ) . 'partials/wp-generative-settings.php';
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e( 'Settings', 'wpg' ); ?></h1>
+            <p><?php esc_html_e( 'No hay ajustes disponibles.', 'wpg' ); ?></p>
+        </div>
+        <?php
     }
 
     public function render_sandbox_page() {
