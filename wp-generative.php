@@ -107,13 +107,9 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/admin-dataset-setting.php';
 require_once __DIR__ . '/includes/class-wpg-openai.php';
 require_once __DIR__ . '/includes/class-wpg-visualization.php';
 require_once __DIR__ . '/admin/class-wpg-admin.php';
-require_once __DIR__ . '/admin/class-wp-generative-admin.php';
 
 // Inicializa la administración del plugin sin depender del hook plugins_loaded
 WPG_Admin::get_instance();
-if ( is_admin() ) {
-  new WP_Generative_Admin();
-}
 
 
 // ===== Utilidades para extraer texto y código =====
@@ -243,21 +239,4 @@ if (is_admin() && file_exists(plugin_dir_path(__FILE__).'includes/test-extractor
 }
 
 require_once plugin_dir_path(__FILE__) . 'inc/api.php';
-
-add_action('admin_menu', function(){
-  add_menu_page(
-    'WP Generative', 'WP Generative', 'manage_options',
-    'wp-generative', 'tdg_render_admin_page', 'dashicons-art', 58
-  );
-});
-
-function tdg_render_admin_page() {
-  include plugin_dir_path(__FILE__) . 'admin/admin-page.php';
-}
-
-add_action('admin_enqueue_scripts', function($hook){
-  if ($hook === 'toplevel_page_wp-generative') {
-    wp_enqueue_script('tdg-admin', plugin_dir_url(__FILE__) . 'admin/admin.js', [], '1.0', true);
-  }
-});
 
