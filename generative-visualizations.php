@@ -24,6 +24,54 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// NUEVAS FUNCIONES PARA EXTRAER TEXTO Y CÓDIGO p5
+function td_get_assistant_text(array $assistant_message): string {
+  $out = '';
+  if (!empty($assistant_message['content']) && is_array($assistant_message['content'])) {
+    foreach ($assistant_message['content'] as $chunk) {
+      if (isset($chunk['text']['value']) && is_string($chunk['text']['value'])) {
+        $out .= $chunk['text']['value'];
+      } elseif (isset($chunk['text']) && is_string($chunk['text'])) {
+        $out .= $chunk['text'];
+      }
+    }
+  }
+  if ($out === '' && isset($assistant_message['text']) && is_string($assistant_message['text'])) {
+    $out = $assistant_message['text'];
+  }
+  return trim($out);
+}
+
+function td_extract_p5_code(string $text): ?string {
+  if ($text === '') return null;
+  if (preg_match('/```(?:js|javascript|p5)?\s*([\s\S]*?)```/i', $text, $m)) {
+    $code = trim($m[1]);
+  } else {
+    $looks_like_sketch = stripos($text, 'function setup') !== false && stripos($text, 'function draw') !== false;
+    $code = $looks_like_sketch ? trim($text) : null;
+  }
+  if (!$code) return null;
+  $code = preg_replace("/^\xEF\xBB\xBF/", '', $code);
+  $code = str_replace("\r\n", "\n", $code);
+  return $code !== '' ? $code : null;
+}
+
+function td_enqueue_p5_and_sketch(string $code): void {
+  wp_enqueue_script('p5', 'https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js', [], null, true);
+  if (!headers_sent()) {
+    wp_add_inline_script('p5', $code);
+    return;
+  }
+  $handle = 'td-sketch-'.wp_generate_uuid4();
+  $up = wp_upload_dir();
+  $dir = trailingslashit($up['basedir']).'td-sketches';
+  wp_mkdir_p($dir);
+  $path = $dir.'/'.$handle.'.js';
+  file_put_contents($path, $code);
+  $url = trailingslashit($up['baseurl']).'td-sketches/'.$handle.'.js';
+  wp_enqueue_script($handle, $url, ['p5'], null, true);
+}
+
 function gv_register_cpt() {
     $labels = [
         'name'               => 'Visualizaciones',
@@ -333,8 +381,17 @@ function gv_generate_p5_ajax() {
         wp_send_json_error( 'api_error' );
     }
     $data = json_decode( wp_remote_retrieve_body( $response ), true );
-    $code = $data['choices'][0]['message']['content'] ?? '';
-    wp_send_json_success( [ 'code' => $code ] );
+    $assistant_message = $data['choices'][0]['message'] ?? [];
+    $raw_text = td_get_assistant_text( $assistant_message );
+    $code = td_extract_p5_code( $raw_text );
+
+    if ( ! $code ) {
+        error_log( '[TD] No se encontró bloque p5.js. Texto recibido: ' . substr( $raw_text, 0, 500 ) );
+        wp_send_json( [ 'success' => false, 'data' => [ 'message' => 'La respuesta no contiene código p5.js detectable' ] ] );
+    }
+
+    td_enqueue_p5_and_sketch( $code );
+    wp_send_json( [ 'success' => true ] );
 }
 add_action( 'wp_ajax_gv_generate_p5', 'gv_generate_p5_ajax' );
 
