@@ -107,9 +107,13 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/admin-dataset-setting.php';
 require_once __DIR__ . '/includes/class-wpg-openai.php';
 require_once __DIR__ . '/includes/class-wpg-visualization.php';
 require_once __DIR__ . '/admin/class-wpg-admin.php';
+require_once __DIR__ . '/admin/class-wp-generative-admin.php';
 
 // Inicializa la administración del plugin sin depender del hook plugins_loaded
 WPG_Admin::get_instance();
+if ( is_admin() ) {
+  new WP_Generative_Admin();
+}
 
 
 // ===== Utilidades para extraer texto y código =====
