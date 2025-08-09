@@ -156,7 +156,7 @@ class WPG_Admin {
                     <?php esc_html_e( 'Actualizar código (reemplazar let data…)', 'wpg' ); ?>
                 </button>
                 <small id="wpgen-update-hint" style="opacity:.75">
-                    <?php esc_html_e( 'Usará la URL del dataset para regenerar data o years con todos los registros.', 'wpg' ); ?>
+                    <?php esc_html_e( 'Usará la URL del dataset para regenerar data o years con todos los registros. Debería ser igual a Dataset URL.', 'wpg' ); ?>
                 </small>
             </div>
             <input type="url" id="wpgen-dataset-url" placeholder="https://raw.githubusercontent.com/usuario/repo/main/dataset.csv" style="margin-top:6px; width:100%" />
