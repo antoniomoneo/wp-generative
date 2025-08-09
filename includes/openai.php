@@ -15,8 +15,7 @@ function wpg_extract_p5_code( $text ) {
 
 function wpg_is_valid_p5( $code ) {
   return ( strpos( $code, 'function setup' ) !== false
-        && strpos( $code, 'function draw' ) !== false
-        && strpos( $code, 'function preload' ) !== false );
+        && strpos( $code, 'function draw' ) !== false );
 }
 
 function wpg_call_openai_p5( $dataset_url, $user_prompt ) {
@@ -27,7 +26,7 @@ function wpg_call_openai_p5( $dataset_url, $user_prompt ) {
     "- Descarga el CSV con loadTable(url, 'csv', 'header') en preload().\n" .
     "- Detecta tipos de columnas y crea la visualización solicitada.\n" .
     "- Devuelve SOLO código JavaScript p5.js válido (sin HTML, sin comentarios extensos, sin explicaciones).\n" .
-    "- Incluye como mínimo preload(), setup() y draw().\n" .
+    "- `setup()` y `draw()` obligatorios; `preload()` si cargas el CSV con loadTable().\n" .
     "- Si la URL falla, simula datos con arrays para que el sketch funcione.\n" .
     "- No uses backticks ni fences Markdown en la salida.";
 

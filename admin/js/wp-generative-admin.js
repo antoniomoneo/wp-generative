@@ -37,6 +37,24 @@
     return text.replace(/^\s*```[a-z]*\s*/i, '').replace(/\s*```\s*$/i, '');
   }
 
+  function hasSetup(code){ return /function\s+setup\s*\(|setup\s*=\s*\(/.test(code); }
+  function hasDraw(code){  return /function\s+draw\s*\(|draw\s*=\s*\(/.test(code); }
+
+  function buildPreviewHTML(code){
+    // Inserta p5 y el sketch como <script> para el iframe
+    return [
+      '<!doctype html><html><head><meta charset="utf-8">',
+      '<meta name="viewport" content="width=device-width,initial-scale=1">',
+      '<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>',
+      '</head><body>',
+      '<main id="app"></main>',
+      '<script>',
+      code,
+      '</script>',
+      '</body></html>'
+    ].join('\n');
+  }
+
   $(document).ready(function(){
     initEditor();
 
@@ -84,7 +102,11 @@
           $status.addClass('error').text((resp && resp.data && resp.data.message) ? resp.data.message : 'Error desconocido.');
           return;
         }
-        const code = stripCodeFences(resp.data.code || '');
+        let code = stripCodeFences(resp.data.code || '');
+        if (!hasSetup(code) || !hasDraw(code)){
+          $status.addClass('error').text('La respuesta NO contiene un sketch completo (faltan setup() o draw()). Ajusta las instrucciones del asistente o vuelve a generar.');
+          return;
+        }
         if (cm){
           cm.setValue(code);
           cm.focus();
@@ -109,6 +131,26 @@
       }, function(){
         $status.addClass('error').text('No se pudo copiar.');
       });
+    });
+
+    // Vista previa
+    $('#td_preview').on('click', function(e){
+      e.preventDefault();
+      const iframe = document.getElementById('td_preview_iframe');
+      const code = cm ? cm.getValue() : ($('#td_code_editor').val() || '');
+      if (!hasSetup(code) || !hasDraw(code)){
+        $status.addClass('error').text('No se puede previsualizar: faltan setup() o draw().');
+        return;
+      }
+      const html = buildPreviewHTML(code);
+      // Cargar en iframe via srcdoc (fallback a Blob si hiciera falta)
+      if ('srcdoc' in iframe){
+        iframe.srcdoc = html;
+      } else {
+        const blob = new Blob([html], {type:'text/html'});
+        iframe.src = URL.createObjectURL(blob);
+      }
+      $status.removeClass('error').text('Vista previa actualizada.');
     });
   });
 })(jQuery);

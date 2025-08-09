@@ -13,7 +13,13 @@
  
   <label for="td_code_editor"><strong>Código p5.js</strong></label>
   <textarea id="td_code_editor" name="td_code_editor" rows="20" class="large-text" placeholder="Aquí aparecerá el código p5.js"></textarea>
- 
+  <p class="submit">
+    <button id="td_preview" class="button">Vista previa</button>
+  </p>
+  <div class="td-preview-wrap">
+    <iframe id="td_preview_iframe" title="Vista previa p5.js" sandbox="allow-scripts allow-same-origin" style="width:100%;height:420px;border:1px solid #ddd;"></iframe>
+  </div>
+
   <p class="submit">
     <button id="td_generate" class="button button-primary" disabled>Generar</button>
     <button id="td_copy_code" class="button">Copiar código</button>
