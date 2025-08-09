@@ -11,18 +11,22 @@ function wpgen_get_p5js_from_openai(array $args) {
     if ($timeout <= 0) $timeout = 60;
 
     $data_url = esc_url_raw( $args['data_url'] ?? '' );
+    if ( empty( $data_url ) ) {
+        $data_url = esc_url_raw( get_option( 'gv_default_dataset_url', '' ) );
+    }
     $dataset_text = GV_Dataset_Helper::get_sample( $data_url );
     $user_prompt  = $args['user_prompt'] ?? '';
     $width        = intval( $args['width']  ?? 800 );
     $height       = intval( $args['height'] ?? 500 );
     $data_format  = $args['data_format'] ?? 'auto';
 
-    $input_text = "DATASET:\n{$dataset_text}\n\nUSER REQUEST:\n{$user_prompt}\n\nPARAMS:\n" . wp_json_encode( [
+    $user_prompt .= "\n\nPARAMS:\n" . wp_json_encode( [
         'data_url'    => $data_url,
         'data_format' => $data_format,
         'width'       => $width,
         'height'      => $height,
     ] );
+    $combined_prompt = "DATASET:\n{$dataset_text}\n\nUSER REQUEST:\n{$user_prompt}";
 
     $payload = [
         'model' => $model,
@@ -30,7 +34,7 @@ function wpgen_get_p5js_from_openai(array $args) {
             'role'    => 'user',
             'content' => [[
                 'type' => 'text',
-                'text' => $input_text,
+                'text' => $combined_prompt,
             ]],
         ]],
     ];

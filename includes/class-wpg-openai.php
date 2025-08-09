@@ -10,12 +10,10 @@ class WPG_OpenAI {
         $this->api_url = $api_url;
     }
 
-    public function get_p5js_code( $prompt, $dataset_text = 'DATASET NOT AVAILABLE' ) {
+    public function get_p5js_code( $combined_prompt ) {
         if ( empty( $this->api_key ) ) {
             return new WP_Error( 'missing_credentials', 'API Key no establecido.' );
         }
-
-        $input = "DATASET:\n{$dataset_text}\n\nUSER REQUEST:\n{$prompt}";
 
         $payload = [
             'model'            => 'gpt-4.1-mini',
@@ -23,7 +21,7 @@ class WPG_OpenAI {
                 [
                     'role'    => 'user',
                     'content' => [
-                        [ 'type' => 'text', 'text' => $input ],
+                        [ 'type' => 'text', 'text' => $combined_prompt ],
                     ],
                 ],
             ],

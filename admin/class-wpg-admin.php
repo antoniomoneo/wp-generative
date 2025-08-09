@@ -253,17 +253,20 @@ class WPG_Admin {
         $api_key     = sanitize_text_field( $_POST['api_key'] ?? $this->get_api_key() );
         $user_prompt = sanitize_textarea_field( $_POST['prompt'] ?? '' );
         $dataset_url = esc_url_raw( $_POST['dataset_url'] ?? '' );
+        if ( ! $dataset_url ) {
+            $dataset_url = esc_url_raw( get_option( 'gv_default_dataset_url', '' ) );
+        }
 
         if ( ! $api_key ) {
             wp_send_json_error( [ 'message' => __( 'Faltan credenciales.', 'wpg' ) ] );
         }
 
-        $dataset_text = GV_Dataset_Helper::get_sample( $dataset_url );
-
-        $prompt = $this->get_base_instructions() . "\n\n" . $user_prompt;
+        $dataset_text   = GV_Dataset_Helper::get_sample( $dataset_url );
+        $user_prompt    = $this->get_base_instructions() . "\n\n" . $user_prompt;
+        $combined_prompt = "DATASET:\n{$dataset_text}\n\nUSER REQUEST:\n{$user_prompt}";
 
         $openai = new WPG_OpenAI( $api_key );
-        $code   = $openai->get_p5js_code( $prompt, $dataset_text );
+        $code   = $openai->get_p5js_code( $combined_prompt );
 
         if ( is_wp_error( $code ) ) {
             wp_send_json_error( [ 'message' => $code->get_error_message() ] );
