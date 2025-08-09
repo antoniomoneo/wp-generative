@@ -33,8 +33,12 @@ add_shortcode('p5js_visual', function ($atts) {
         'cache'       => 30,
     ], $atts, 'p5js_visual');
 
-    // Allow dataset_url as alias of data_url.
-    $data_url    = esc_url_raw($atts['dataset_url'] ? $atts['dataset_url'] : $atts['data_url']);
+    // Allow dataset_url as alias of data_url and fallback to default option.
+    $data_url = $atts['dataset_url'] ? $atts['dataset_url'] : $atts['data_url'];
+    if (empty($data_url)) {
+        $data_url = get_option('gv_default_dataset_url', '');
+    }
+    $data_url    = esc_url_raw($data_url);
     $user_prompt = sanitize_text_field($atts['user_prompt']);
     $data_format = in_array($atts['data_format'], ['auto','csv','json'], true) ? $atts['data_format'] : 'auto';
     $width       = intval($atts['width']);
