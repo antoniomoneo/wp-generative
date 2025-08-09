@@ -58,16 +58,18 @@ function wpgen_get_p5js_from_openai(array $args) {
         return new WP_Error('wpgen_bad_response', 'Respuesta no válida de OpenAI.');
     }
 
-    $js = $body['output'][0]['content'][0]['text'] ?? '';
-    if (!$js && isset($body['content'][0]['text'])) {
-        $js = $body['content'][0]['text'];
-    }
-    if (!$js && isset($body['choices'][0]['message']['content'])) {
-        $js = $body['choices'][0]['message']['content'];
+    $assistant_message = $body['data'][0] ?? ($body['last_message'] ?? null);
+    if (!$assistant_message) {
+        return new WP_Error('wpgen_no_message', 'No se recibió mensaje del asistente');
     }
 
-    if (!is_string($js) || $js === '') {
-        return new WP_Error('wpgen_empty_js', 'OpenAI no devolvió código p5.js.');
+    $raw_text = td_get_assistant_text($assistant_message);
+    $code = td_extract_p5_code($raw_text);
+
+    if (!$code) {
+        error_log('[TD] No se encontró bloque p5.js. Primeros 500 chars: ' . substr($raw_text, 0, 500));
+        return new WP_Error('wpgen_no_p5', 'La respuesta no contiene código p5.js detectable');
     }
-    return $js;
+
+    return $code;
 }
