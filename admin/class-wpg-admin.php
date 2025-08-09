@@ -98,6 +98,11 @@ class WPG_Admin {
             return;
         }
 
+        $editor_settings = wp_enqueue_code_editor( [ 'type' => 'text/javascript' ] );
+        if ( $editor_settings ) {
+            wp_enqueue_script( 'wp-theme-plugin-editor' );
+        }
+
         wp_enqueue_script(
             'p5',
             plugin_dir_url( __FILE__ ) . '../assets/js/p5.min.js',
@@ -108,10 +113,13 @@ class WPG_Admin {
         wp_enqueue_script(
             'wpg-admin-js',
             plugin_dir_url( __FILE__ ) . 'js/wpg-admin.js',
-            [ 'jquery', 'p5' ],
+            [ 'jquery', 'p5', 'wp-theme-plugin-editor' ],
             '1.3.0',
             true
         );
+        if ( $editor_settings ) {
+            wp_localize_script( 'wpg-admin-js', 'wpgEditorSettings', $editor_settings );
+        }
         wp_localize_script( 'wpg-admin-js', 'WPG_Ajax', [
             'ajax_url' => admin_url( 'admin-ajax.php' ),
             'nonce'    => wp_create_nonce( 'wpg_nonce' ),
