@@ -15,29 +15,7 @@ class WPG_Admin {
         return self::$instance ?: self::$instance = new self();
     }
 
-    private function get_api_key() {
-        $api_key = get_option( 'wpg_api_key', '' );
-        if ( $api_key ) {
-            return $api_key;
-        }
-        if ( defined( 'OPENAI_API_KEY' ) ) {
-            return OPENAI_API_KEY;
-        }
-        $env_key = getenv( 'OPENAI_API_KEY' );
-        return $env_key ? $env_key : '';
-    }
-
-    private function get_assistant_id() {
-        $assistant = get_option( 'wpg_assistant_id', '' );
-        if ( $assistant ) {
-            return $assistant;
-        }
-        if ( defined( 'OPENAI_ASSISTANT_ID' ) ) {
-            return OPENAI_ASSISTANT_ID;
-        }
-        $env_assistant = getenv( 'OPENAI_ASSISTANT_ID' );
-        return $env_assistant ? $env_assistant : '';
-    }
+    // API key and assistant ID are retrieved via wpg_get_openai_credentials().
 
     private function get_base_instructions() {
         return "Eres un generador experto de visualizaciones de datos usando p5.js. Recibirás dos insumos: (1) una muestra tabular de aproximadamente 20 registros, incluyendo todas las columnas relevantes, en formato JSON válido; y (2) una descripción en lenguaje natural de lo que el usuario quiere visualizar. Analiza los datos para identificar tipos de columnas (numéricas, categóricas, fechas en ISO 8601 o DD/MM/AAAA, etc.) y genera un sketch p5.js que represente la información según las instrucciones. El código debe ser funcional, usar setup() y draw(), y puede simular la carga de datos si es necesario. No escribas explicaciones fuera del código. Usa interactividad básica (por ejemplo, zoom o tooltips) cuando sea apropiado. Si la muestra no contiene columnas relevantes o está mal formateada, responde con un mensaje de error indicando las columnas faltantes. Devuelve solo código p5.js.\nfunction setup() { createCanvas(400, 400); }\nfunction draw() { background(220); }";
@@ -148,8 +126,9 @@ class WPG_Admin {
             update_option( 'wpg_assistant_id', sanitize_text_field( $_POST['wpg_assistant_id'] ?? '' ) );
             $saved = true;
         }
-        $api_key       = $this->get_api_key();
-        $assistant_id  = $this->get_assistant_id();
+        $creds       = wpg_get_openai_credentials();
+        $api_key     = $creds['api_key'];
+        $assistant_id  = $creds['assistant_id'];
         ?>
         <div class="wrap">
             <h1><?php esc_html_e( 'API Settings', 'wpg' ); ?></h1>
@@ -251,7 +230,8 @@ class WPG_Admin {
     public function ajax_generate_code() {
         check_ajax_referer( 'wpg_nonce' );
 
-        $api_key     = sanitize_text_field( $_POST['api_key'] ?? $this->get_api_key() );
+        $creds       = wpg_get_openai_credentials();
+        $api_key     = sanitize_text_field( $_POST['api_key'] ?? $creds['api_key'] );
         $user_prompt = sanitize_textarea_field( $_POST['prompt'] ?? '' );
         $dataset_url = esc_url_raw( $_POST['dataset_url'] ?? '' );
         if ( ! $dataset_url ) {

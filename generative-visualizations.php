@@ -12,13 +12,7 @@ if ( defined( 'GV_PLUGIN_VERSION' ) ) {
 }
 define( 'GV_PLUGIN_VERSION', '0.2.2' );
 
-// Attempt to load OpenAI API key from environment if not defined.
-if ( ! defined( 'GV_OPENAI_API_KEY' ) ) {
-    $env_key = getenv( 'OPENAI_API_KEY' );
-    if ( $env_key ) {
-        define( 'GV_OPENAI_API_KEY', $env_key );
-    }
-}
+require_once plugin_dir_path( __FILE__ ) . 'includes/credentials.php';
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -360,7 +354,8 @@ function gv_generate_p5_ajax() {
     if ( ! $prompt ) {
         wp_send_json_error( 'no_prompt' );
     }
-    $api_key = defined( 'GV_OPENAI_API_KEY' ) ? GV_OPENAI_API_KEY : '';
+    $creds   = wpg_get_openai_credentials();
+    $api_key = $creds['api_key'];
     if ( ! $api_key ) {
         wp_send_json_error( 'no_api_key' );
     }

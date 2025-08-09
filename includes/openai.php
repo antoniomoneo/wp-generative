@@ -19,6 +19,7 @@ function wpg_is_valid_p5( $code ) {
 }
 
 function wpg_call_openai_p5( $dataset_url, $user_prompt ) {
+  $creds = wpg_get_openai_credentials();
   $system_instructions =
     "Eres un generador experto de visualizaciones interactivas usando p5.js. " .
     "Recibirás: (1) una URL de un CSV (raw de GitHub) y (2) una descripción de la visualización.\n" .
@@ -50,7 +51,7 @@ function wpg_call_openai_p5( $dataset_url, $user_prompt ) {
 
   $args = [
     'headers' => [
-      'Authorization' => 'Bearer ' . get_option( 'wpg_openai_api_key' ),
+      'Authorization' => 'Bearer ' . $creds['api_key'],
       'Content-Type'  => 'application/json',
     ],
     'body'    => wp_json_encode( $body ),

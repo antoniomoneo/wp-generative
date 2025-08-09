@@ -24,10 +24,11 @@ function wpgen_settings_page() {
       <h1>WP Generative – OpenAI</h1>
       <form method="post" action="options.php">
         <?php settings_fields('wpgen_openai'); ?>
+        <?php $creds = wpg_get_openai_credentials(); ?>
         <table class="form-table" role="presentation">
           <tr>
             <th scope="row"><label for="wpgen_openai_api_key">API Key</label></th>
-            <td><input type="password" id="wpgen_openai_api_key" name="wpgen_openai_api_key" value="<?php echo esc_attr(get_option('wpgen_openai_api_key','')); ?>" class="regular-text" /></td>
+            <td><input type="password" id="wpgen_openai_api_key" name="wpgen_openai_api_key" value="<?php echo esc_attr($creds['api_key']); ?>" class="regular-text" /></td>
           </tr>
           <tr>
             <th scope="row"><label for="wpgen_openai_model">Modelo</label></th>
