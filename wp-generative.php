@@ -206,12 +206,6 @@ add_action('admin_menu', function(){
 }, 20);
 
 function tdg_render_admin_page() {
-  include plugin_dir_path(__FILE__) . 'admin/admin-page.php';
+  WPG_Admin::get_instance()->render_sandbox_page();
 }
-
-add_action('admin_enqueue_scripts', function($hook){
-  if ($hook === 'wpg-settings_page_wp-generative') {
-    wp_enqueue_script('tdg-admin', plugin_dir_url(__FILE__) . 'admin/admin.js', [], '1.0', true);
-  }
-});
 
