@@ -1,75 +1,85 @@
 <?php
-defined('ABSPATH') || exit;
+// OpenAI client for wp-generative (updated)
 
-function wpgen_get_p5js_from_openai(array $args) {
-    $api_key = trim(get_option('wpgen_openai_api_key', ''));
-    if (empty($api_key)) {
-        return new WP_Error('wpgen_no_key', 'Configura tu OpenAI API Key en Ajustes.');
-    }
-    $model = apply_filters('wpgen_openai_model', trim(get_option('wpgen_openai_model', 'gpt-4.1')));
-    $timeout = intval(get_option('wpgen_openai_timeout', 60));
-    if ($timeout <= 0) $timeout = 60;
+defined( 'ABSPATH' ) || exit;
 
-    $data_url = esc_url_raw( $args['data_url'] ?? '' );
-    if ( empty( $data_url ) ) {
-        $data_url = esc_url_raw( get_option( 'gv_default_dataset_url', '' ) );
-    }
-    $dataset_text = GV_Dataset_Helper::get_sample( $data_url );
-    $user_prompt  = $args['user_prompt'] ?? '';
-    $width        = intval( $args['width']  ?? 800 );
-    $height       = intval( $args['height'] ?? 500 );
-    $data_format  = $args['data_format'] ?? 'auto';
-
-    $user_prompt .= "\n\nPARAMS:\n" . wp_json_encode( [
-        'data_url'    => $data_url,
-        'data_format' => $data_format,
-        'width'       => $width,
-        'height'      => $height,
-    ] );
-    $combined_prompt = "DATASET:\n{$dataset_text}\n\nUSER REQUEST:\n{$user_prompt}";
-
-    $payload = [
-        'model' => $model,
-        'input' => [[
-            'role'    => 'user',
-            'content' => [[
-                'type' => 'input_text',
-                'text' => $combined_prompt,
-            ]],
-        ]],
-    ];
-
-    $res = wp_remote_post('https://api.openai.com/v1/responses', [
-        'headers' => [
-            'Authorization' => 'Bearer ' . $api_key,
-            'Content-Type'  => 'application/json',
-        ],
-        'body'    => wp_json_encode($payload),
-        'timeout' => $timeout,
-    ]);
-
-    if (is_wp_error($res)) {
-        return $res;
-    }
-
-    $code = wp_remote_retrieve_response_code($res);
-    $body = json_decode(wp_remote_retrieve_body($res), true);
-    if ($code !== 200 || !is_array($body)) {
-        return new WP_Error('wpgen_bad_response', 'Respuesta no válida de OpenAI.');
-    }
-
-    $assistant_message = $body['data'][0] ?? ($body['last_message'] ?? null);
-    if (!$assistant_message) {
-        return new WP_Error('wpgen_no_message', 'No se recibió mensaje del asistente');
-    }
-
-    $raw_text = td_get_assistant_text($assistant_message);
-    $code = td_extract_p5_code($raw_text);
-
-    if (!$code) {
-        error_log('[TD] No se encontró bloque p5.js. Primeros 500 chars: ' . substr($raw_text, 0, 500));
-        return new WP_Error('wpgen_no_p5', 'La respuesta no contiene código p5.js detectable');
-    }
-
-    return $code;
+function wpg_extract_p5_code( $text ) {
+  // 1) remove markdown fences if present
+  $text = preg_replace('/^\s*```(?:javascript|js|p5)?\s*/i', '', $text);
+  $text = preg_replace('/\s*```\s*$/', '', $text);
+  // 2) normalize line endings and trim
+  $text = preg_replace("/\r\n|\r/", "\n", $text);
+  $text = trim( $text );
+  return $text;
 }
+
+function wpg_is_valid_p5( $code ) {
+  return ( strpos( $code, 'function setup' ) !== false
+        && strpos( $code, 'function draw' ) !== false
+        && strpos( $code, 'function preload' ) !== false );
+}
+
+function wpg_call_openai_p5( $dataset_url, $user_prompt ) {
+  $system_instructions =
+    "Eres un generador experto de visualizaciones interactivas usando p5.js. " .
+    "Recibirás: (1) una URL de un CSV (raw de GitHub) y (2) una descripción de la visualización.\n" .
+    "Obligatorio:\n" .
+    "- Descarga el CSV con loadTable(url, 'csv', 'header') en preload().\n" .
+    "- Detecta tipos de columnas y crea la visualización solicitada.\n" .
+    "- Devuelve SOLO código JavaScript p5.js válido (sin HTML, sin comentarios extensos, sin explicaciones).\n" .
+    "- Incluye como mínimo preload(), setup() y draw().\n" .
+    "- Si la URL falla, simula datos con arrays para que el sketch funcione.\n" .
+    "- No uses backticks ni fences Markdown en la salida.";
+
+  $messages = [
+    [ 'role' => 'system', 'content' => $system_instructions ],
+    [ 'role' => 'user', 'content' =>
+        'CSV_URL: ' . $dataset_url . "\n" .
+        'DESCRIPCION: ' . $user_prompt . "\n" .
+        'Entrega SOLO código p5.js.'
+    ],
+  ];
+
+  $body = [
+    'model' => 'gpt-4.1',
+    'input' => $messages,
+    'temperature' => 0.7,
+    'top_p' => 1,
+    'response_format' => [ 'type' => 'text' ],
+    'max_output_tokens' => 4096,
+  ];
+
+  $args = [
+    'headers' => [
+      'Authorization' => 'Bearer ' . get_option( 'wpg_openai_api_key' ),
+      'Content-Type'  => 'application/json',
+    ],
+    'body'    => wp_json_encode( $body ),
+    'timeout' => 60,
+  ];
+
+  $res = wp_remote_post( 'https://api.openai.com/v1/responses', $args );
+  if ( is_wp_error( $res ) ) {
+    return new WP_Error( 'wpg_openai_error', $res->get_error_message() );
+  }
+  $json = json_decode( wp_remote_retrieve_body( $res ), true );
+
+  $raw = isset( $json['output'][0]['content'][0]['text'] ) ? $json['output'][0]['content'][0]['text'] : '';
+  $code = wpg_extract_p5_code( $raw );
+  if ( ! $code || ! wpg_is_valid_p5( $code ) ) {
+    return new WP_Error( 'wpg_p5_invalid', 'La respuesta no contiene código p5.js válido' );
+  }
+  return $code;
+}
+
+// Wrapper for existing shortcode integration.
+function wpgen_get_p5js_from_openai( array $args ) {
+  $dataset_url = esc_url_raw( $args['data_url'] ?? '' );
+  if ( empty( $dataset_url ) ) {
+    $dataset_url = esc_url_raw( get_option( 'gv_default_dataset_url', '' ) );
+  }
+  $user_prompt = $args['user_prompt'] ?? '';
+
+  return wpg_call_openai_p5( $dataset_url, $user_prompt );
+}
+
