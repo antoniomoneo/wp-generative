@@ -91,12 +91,11 @@
     }
 
     document.getElementById('wpgen-btn-update-code')?.addEventListener('click', async () => {
-        const codeEl = document.getElementById('wpgen-code');
         const urlEl =
             document.getElementById('wpgen-dataset-url') || document.getElementById('wpg_dataset');
         const hintEl = document.getElementById('wpgen-update-hint');
 
-        const source = codeEl?.value || '';
+        const source = getCode();
         const datasetUrl = urlEl?.value?.trim();
 
         if (!source) {
@@ -123,7 +122,8 @@
             }
 
             const updated = replaceDataOrYearsChunk(source, newChunk);
-            codeEl.value = updated;
+            setCode(updated);
+            lastCode = updated;
             if (hintEl) hintEl.textContent = 'Código actualizado con el dataset completo.';
         } catch (e) {
             console.error(e);
@@ -140,6 +140,10 @@
     const textareaResponse = $('#wpg_response');
     function getCode() { return cm ? cm.getValue() : textareaCode.val(); }
     function setCode(v) { if (cm) { cm.setValue(v); } else { textareaCode.val(v); } }
+    function extractCodeBlock(text) {
+        const match = /```(?:javascript|js)?\s*([\s\S]*?)```/i.exec(text || '');
+        return (match ? match[1] : text || '').trim();
+    }
     let lastCode = '';
     const datasetList = $('#wpg_dataset_list');
     const promptField = $('#wpg_prompt');
@@ -218,9 +222,10 @@
             .done(res => {
                 if (res.success) {
                     textareaResponse.val(JSON.stringify(res, null, 2));
-                    lastCode = res.data.code;
-                    setCode(lastCode);
-                    renderSketch(lastCode);
+                    let code = extractCodeBlock(res.data.code);
+                    lastCode = code;
+                    setCode(code);
+                    renderSketch(code);
                 } else {
                     textareaResponse.val(res.data.api_response || JSON.stringify(res, null, 2));
                     let msg = res.data.message || 'Error';
@@ -250,16 +255,18 @@
     btnSave.on('click', function (e) {
         e.preventDefault();
         const slug = $('#wpg_slug').val();
-        if (!slug || !lastCode) {
+        const code = getCode();
+        if (!slug || !code) {
             alert('Faltan datos para guardar');
             return;
         }
+        lastCode = code;
         btnSave.prop('disabled', true);
         $.post(WPG_Ajax.ajax_url, {
             action: 'wpg_save_visualization',
             _ajax_nonce: WPG_Ajax.nonce,
             slug: slug,
-            code: lastCode,
+            code: code,
             prompt: $('#wpg_prompt').val(),
         }).done(res => {
             if (res.success) {
