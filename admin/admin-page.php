@@ -34,5 +34,10 @@
     ?></textarea>
     <p class="description">Este es el código p5.js listo para incrustar.</p>
   </form>
+  <!-- Visor de código con numeración y resaltado -->
+  <textarea id="wpgen-p5-seed" style="display:none;"></textarea>
+  <div class="wpgen-codewrap">
+    <pre class="line-numbers"><code id="wpgen-p5-code" class="language-javascript"></code></pre>
+  </div>
 </div>
 
