@@ -3,11 +3,6 @@
   <h1>WP Generative — p5.js</h1>
   <form method="post">
     <?php
-    if ( isset( $_POST['wpg_api_key'] ) ) {
-      update_option( 'wpg_openai_api_key', sanitize_text_field( $_POST['wpg_api_key'] ) );
-      echo '<div class="notice notice-success"><p>API key guardada.</p></div>';
-    }
-
     // Submit: generate p5.js
     if ( isset( $_POST['wpg_generate'] ) ) {
       $url  = esc_url_raw( $_POST['wpg_dataset_url'] ?? '' );
@@ -21,9 +16,6 @@
       }
     }
     ?>
-    <?php $creds = wpg_get_openai_credentials(); ?>
-    <p><label>OpenAI API Key<br>
-      <input name="wpg_api_key" type="password" value="<?php echo esc_attr( $creds['api_key'] ); ?>" style="width:100%"></label></p>
     <p><label>Dataset URL (raw .csv)<br>
       <input name="wpg_dataset_url" type="url" value="<?php echo esc_attr( $_POST['wpg_dataset_url'] ?? '' ); ?>" style="width:100%"></label></p>
     <p><label>Descripción de la visualización<br>

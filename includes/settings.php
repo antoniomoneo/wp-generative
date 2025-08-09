@@ -13,9 +13,10 @@ add_action('admin_menu', function () {
 }, 20);
 
 add_action('admin_init', function () {
-    register_setting('wpgen_openai', 'wpgen_openai_api_key', ['type'=>'string','sanitize_callback'=>'sanitize_text_field']);
-    register_setting('wpgen_openai', 'wpgen_openai_model',   ['type'=>'string','sanitize_callback'=>'sanitize_text_field','default'=>'gpt-4.1']);
-    register_setting('wpgen_openai', 'wpgen_openai_timeout', ['type'=>'integer','default'=>60]);
+    register_setting('wpgen_openai', 'wpgen_openai_api_key', ['type' => 'string',  'sanitize_callback' => 'sanitize_text_field']);
+    register_setting('wpgen_openai', 'wpgen_openai_assistant_id', ['type' => 'string',  'sanitize_callback' => 'sanitize_text_field']);
+    register_setting('wpgen_openai', 'wpgen_openai_model',   ['type' => 'string',  'sanitize_callback' => 'sanitize_text_field', 'default' => 'gpt-4.1']);
+    register_setting('wpgen_openai', 'wpgen_openai_timeout', ['type' => 'integer', 'default' => 60]);
 });
 
 function wpgen_settings_page() {
@@ -29,6 +30,10 @@ function wpgen_settings_page() {
           <tr>
             <th scope="row"><label for="wpgen_openai_api_key">API Key</label></th>
             <td><input type="password" id="wpgen_openai_api_key" name="wpgen_openai_api_key" value="<?php echo esc_attr($creds['api_key']); ?>" class="regular-text" /></td>
+          </tr>
+          <tr>
+            <th scope="row"><label for="wpgen_openai_assistant_id">Assistant ID</label></th>
+            <td><input type="text" id="wpgen_openai_assistant_id" name="wpgen_openai_assistant_id" value="<?php echo esc_attr($creds['assistant_id']); ?>" class="regular-text" /></td>
           </tr>
           <tr>
             <th scope="row"><label for="wpgen_openai_model">Modelo</label></th>
@@ -45,4 +50,27 @@ function wpgen_settings_page() {
       <pre>[p5js_visual data_url="https://example.com/data.csv" user_prompt="Línea temporal de temperatura con tooltip" data_format="auto" width="900" height="520" cache="30"]</pre>
     </div>
     <?php
+}
+
+function wpg_get_openai_credentials() {
+    $api_key = '';
+    if ( defined( 'OPENAI_API_KEY' ) && OPENAI_API_KEY ) {
+        $api_key = OPENAI_API_KEY;
+    } elseif ( getenv( 'OPENAI_API_KEY' ) ) {
+        $api_key = getenv( 'OPENAI_API_KEY' );
+    } else {
+        $api_key = get_option( 'wpgen_openai_api_key', '' );
+    }
+
+    $assistant_id = get_option( 'wpgen_openai_assistant_id', '' );
+    if ( ! $assistant_id && defined( 'OPENAI_ASSISTANT_ID' ) ) {
+        $assistant_id = OPENAI_ASSISTANT_ID;
+    } elseif ( ! $assistant_id && getenv( 'OPENAI_ASSISTANT_ID' ) ) {
+        $assistant_id = getenv( 'OPENAI_ASSISTANT_ID' );
+    }
+
+    return [
+        'api_key'      => (string) $api_key,
+        'assistant_id' => (string) $assistant_id,
+    ];
 }

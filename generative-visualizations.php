@@ -12,7 +12,7 @@ if ( defined( 'GV_PLUGIN_VERSION' ) ) {
 }
 define( 'GV_PLUGIN_VERSION', '0.2.2' );
 
-require_once plugin_dir_path( __FILE__ ) . 'includes/credentials.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/settings.php';
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
