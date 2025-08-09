@@ -367,3 +367,30 @@ function gv_sandbox_save_ajax() {
 }
 add_action( 'wp_ajax_gv_sandbox_save', 'gv_sandbox_save_ajax' );
 
+// Shortcode to trigger generation. Adds dataset_url attr and renders returned p5.js inside a <script>.
+if ( ! function_exists( 'gv_render_p5_shortcode' ) ) {
+       /**
+        * Usage: [gv prompt="..." dataset_url="https://.../data.csv"]
+        */
+       function gv_render_p5_shortcode( $atts ) {
+               $atts = shortcode_atts( array(
+                       'prompt'      => '',
+                       'dataset_url' => '',
+               ), $atts, 'gv' );
+
+               $prompt = wp_strip_all_tags( (string) $atts['prompt'] );
+
+               if ( '' === $prompt ) {
+                       return '<p>Falta el prompt.</p>';
+               }
+
+               $client = new GV_OpenAI_Client();
+               $code   = $client->generate_p5( $prompt, $atts );
+
+               // Print raw inside <script> without wpautop/kses interfering.
+               // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+               return "<div class=\"gv-container\"></div>\n<script>\n{$code}\n</script>";
+       }
+       add_shortcode( 'gv', 'gv_render_p5_shortcode' );
+}
+
