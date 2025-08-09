@@ -18,3 +18,17 @@ code.language-javascript .token.variable {
   font-weight: 500;
 }
 
+/* Colores básicos para el resaltado */
+code.language-javascript .token.keyword {
+  color: #c792ea;
+}
+code.language-javascript .token.string {
+  color: #ecc48d;
+}
+code.language-javascript .token.comment {
+  color: #6a9955;
+}
+code.language-javascript .token.number {
+  color: #f78c6c;
+}
+
