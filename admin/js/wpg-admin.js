@@ -3,6 +3,7 @@
     const btnRun = $('#wpg-run');
     const btnSave = $('#wpg-save');
     const textareaCode = $('#wpg_code');
+    const textareaRequest = $('#wpg_request');
     const textareaResponse = $('#wpg_response');
     let lastCode = '';
     const datasetList = $('#wpg_dataset_list');
@@ -27,6 +28,7 @@
         e.preventDefault();
         btnGenerate.prop('disabled', true);
         textareaResponse.val('');
+        textareaRequest.val('');
 
         const data = {
             action: 'wpg_generate_code',
@@ -34,6 +36,10 @@
             prompt: $('#wpg_prompt').val(),
             dataset_url: $('#wpg_dataset').val(),
         };
+
+        textareaRequest.val(
+            JSON.stringify({ url: WPG_Ajax.ajax_url, data: data }, null, 2)
+        );
 
         $.post(WPG_Ajax.ajax_url, data)
             .done(res => {
