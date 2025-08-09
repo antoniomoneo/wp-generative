@@ -16,8 +16,11 @@ class WP_Generative_API {
               "Requisitos:\n".
               "- Descarga y usa directamente el CSV de la URL (formato raw GitHub).\n".
               "- Analiza tipos de columnas.\n".
-              "- Genera SOLO código p5.js (sin HTML) con setup()/draw() y preload() si hace falta.\n".
-              "- Si falla la descarga, simula con datos estáticos pero deja el esqueleto completo.\n";
+              "- Genera SOLO código p5.js (sin HTML) pero con un SKETCH COMPLETO:\n".
+              "  - define variables globales necesarias\n".
+              "  - `preload()` (si cargas CSV con `loadTable`), `setup()` y `draw()` obligatorios\n".
+              "  - si no puedes descargar el CSV, simula datos pero mantén `preload/setup/draw`.\n".
+              "  No devuelvas comentarios explicativos ni bloques ```; solo el código.\n";
 
     // Llamada a tu asistente / completions (ajusta a tu implementación v2)
     $response = $this->openai_call( $prompt );
