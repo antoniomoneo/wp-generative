@@ -7,6 +7,41 @@
     const textareaResponse = $('#wpg_response');
     let lastCode = '';
     const datasetList = $('#wpg_dataset_list');
+    const promptField = $('#wpg_prompt');
+    const datasetField = $('#wpg_dataset');
+    const defaultPrompt = 'crea el código p5.js para una visualización generativa del dataset en la URL.';
+    promptField.val(defaultPrompt);
+
+    datasetField.on('change', function () {
+        const url = $(this).val();
+        if (!url) {
+            promptField.val(defaultPrompt);
+            return;
+        }
+        fetch(url)
+            .then(res => {
+                const ctype = res.headers.get('content-type') || '';
+                if (ctype.includes('application/json')) {
+                    return res.json().then(data => JSON.stringify(data, null, 2));
+                }
+                return res.text();
+            })
+            .then(text => {
+                const maxBytes = 60000;
+                if (text.length > maxBytes) {
+                    text = text.slice(0, maxBytes) + '\n... [truncated]\n';
+                }
+                const lines = text.split(/\r?\n/);
+                const maxLines = 30;
+                if (lines.length > maxLines) {
+                    text = lines.slice(0, maxLines).join('\n') + '\n... [truncated]\n';
+                }
+                promptField.val(`${defaultPrompt}\n\n${text}`);
+            })
+            .catch(() => {
+                promptField.val(defaultPrompt);
+            });
+    });
 
     if (datasetList.length) {
         fetch('https://api.github.com/repos/antoniomoneo/Datasets/git/trees/main?recursive=1')

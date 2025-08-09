@@ -205,7 +205,7 @@ class WPG_Admin {
             <h1><?php esc_html_e( 'Sandbox', 'wpg' ); ?></h1>
             <form id="wpg-sandbox-form">
                 <p><label for="wpg_prompt"><?php esc_html_e( 'Prompt', 'wpg' ); ?></label></p>
-                <p><textarea id="wpg_prompt" rows="4" cols="50"></textarea></p>
+                <p><textarea id="wpg_prompt" rows="4" cols="50"><?php esc_html_e( 'crea el código p5.js para una visualización generativa del dataset en la URL.', 'wpg' ); ?></textarea></p>
                 <p><label for="wpg_dataset"><?php esc_html_e( 'Dataset URL', 'wpg' ); ?></label></p>
                 <p>
                     <input type="text" id="wpg_dataset" size="50" list="wpg_dataset_list" />
