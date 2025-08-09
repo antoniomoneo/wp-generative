@@ -2,14 +2,15 @@
 defined('ABSPATH') || exit;
 
 add_action('admin_menu', function () {
-    add_options_page(
+    add_submenu_page(
+        'wpg-settings',
         'WP Generative – OpenAI',
         'WP Generative – OpenAI',
         'manage_options',
         'wpgen-openai',
         'wpgen_settings_page'
     );
-});
+}, 20);
 
 add_action('admin_init', function () {
     register_setting('wpgen_openai', 'wpgen_openai_api_key', ['type'=>'string','sanitize_callback'=>'sanitize_text_field']);
