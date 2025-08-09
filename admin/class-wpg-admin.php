@@ -116,50 +116,6 @@ class WPG_Admin {
         ] );
     }
 
-    public function render_api_settings_page() {
-        $saved            = false;
-        $api_key_editable = ! defined( 'OPENAI_API_KEY' ) && ! getenv( 'OPENAI_API_KEY' );
-        if ( isset( $_POST['wpg_api_submit'] ) && check_admin_referer( 'wpg_save_api' ) ) {
-            if ( $api_key_editable ) {
-                update_option( 'wpg_api_key', sanitize_text_field( $_POST['wpg_api_key'] ?? '' ) );
-            }
-            update_option( 'wpg_assistant_id', sanitize_text_field( $_POST['wpg_assistant_id'] ?? '' ) );
-            $saved = true;
-        }
-        $creds       = wpg_get_openai_credentials();
-        $api_key     = $creds['api_key'];
-        $assistant_id  = $creds['assistant_id'];
-        ?>
-        <div class="wrap">
-            <h1><?php esc_html_e( 'API Settings', 'wpg' ); ?></h1>
-            <?php if ( $saved ) : ?>
-                <div class="updated notice"><p><?php esc_html_e( 'Opciones guardadas.', 'wpg' ); ?></p></div>
-            <?php endif; ?>
-            <form method="post">
-                <?php wp_nonce_field( 'wpg_save_api' ); ?>
-                <table class="form-table">
-                    <tr>
-                        <th><label for="wpg_api_key">API Key</label></th>
-                        <td>
-                            <?php if ( $api_key_editable ) : ?>
-                                <input type="password" id="wpg_api_key" name="wpg_api_key" value="<?php echo esc_attr( $api_key ); ?>" size="40" />
-                            <?php else : ?>
-                                <input type="text" id="wpg_api_key" value="********" size="40" readonly />
-                                <p class="description"><?php esc_html_e( 'Definida por el entorno.', 'wpg' ); ?></p>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="wpg_assistant_id">Assistant ID</label></th>
-                        <td><input type="text" id="wpg_assistant_id" name="wpg_assistant_id" value="<?php echo esc_attr( $assistant_id ); ?>" size="40" /></td>
-                    </tr>
-                </table>
-                <?php submit_button( __( 'Guardar', 'wpg' ), 'primary', 'wpg_api_submit' ); ?>
-            </form>
-        </div>
-        <?php
-    }
-
     public function render_settings_page() {
         ?>
         <div class="wrap">

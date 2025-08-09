@@ -2,12 +2,11 @@
   async function callAssistant() {
     const dataset_url  = document.getElementById('td_dataset_url').value.trim();
     const user_prompt  = document.getElementById('td_user_prompt').value.trim();
-    const assistant_id = document.getElementById('td_assistant_id').value.trim();
 
     const res = await fetch('/wp-json/wp-generative/v1/ask', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ dataset_url, user_prompt, assistant_id })
+      body: JSON.stringify({ dataset_url, user_prompt })
     });
     const data = await res.json();
     const apiBox = document.getElementById('td_api_response');
