@@ -10,7 +10,10 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-require_once __DIR__ . '/includes/class-gv-dataset.php';
+// Autoload / includes.
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-gv-dataset.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-gv-openai.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/admin-dataset-setting.php';
 require_once __DIR__ . '/includes/class-wpg-openai.php';
 require_once __DIR__ . '/includes/class-wpg-visualization.php';
 require_once __DIR__ . '/admin/class-wpg-admin.php';
@@ -90,5 +93,4 @@ require_once plugin_dir_path(__FILE__) . 'includes/enqueue.php';
 require_once plugin_dir_path(__FILE__) . 'includes/openai.php';
 if (is_admin()) {
     require_once plugin_dir_path(__FILE__) . 'includes/settings.php';
-    require_once plugin_dir_path(__FILE__) . 'includes/admin-dataset-setting.php';
 }
