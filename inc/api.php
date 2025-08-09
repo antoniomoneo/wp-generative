@@ -20,7 +20,7 @@ function tdg_handle_openai_request(\WP_REST_Request $req) {
     return new \WP_Error('bad_request', 'Falta assistant_id o prompt.', ['status' => 400]);
   }
 
-  $api_key = get_option('tdg_openai_api_key');
+  $api_key = get_option('wpg_openai_api_key');
   if (!$api_key) {
     return new \WP_Error('no_api_key', 'Configura tu OpenAI API key.', ['status' => 500]);
   }
