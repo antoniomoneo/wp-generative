@@ -1,0 +1,5 @@
+.CodeMirror { min-height: 420px; border: 1px solid #ddd; font-size: 13px; }
+.cm-td-var { font-weight: bold; }
+.td-field { margin-bottom: 16px; }
+.td-status { margin-top: 10px; }
+.td-status.error { color: #b32d2e; }
