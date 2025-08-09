@@ -21,7 +21,7 @@ class WPG_OpenAI {
                 [
                     'role'    => 'user',
                     'content' => [
-                        [ 'type' => 'text', 'text' => $combined_prompt ],
+                        [ 'type' => 'input_text', 'text' => $combined_prompt ],
                     ],
                 ],
             ],

@@ -33,7 +33,7 @@ function wpgen_get_p5js_from_openai(array $args) {
         'input' => [[
             'role'    => 'user',
             'content' => [[
-                'type' => 'text',
+                'type' => 'input_text',
                 'text' => $combined_prompt,
             ]],
         ]],
