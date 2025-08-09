@@ -22,6 +22,70 @@ require_once __DIR__ . '/admin/class-wpg-admin.php';
 WPG_Admin::get_instance();
 
 
+// ===== Utilidades para extraer texto y código =====
+function td_get_assistant_text(array $assistant_message): string {
+  $out = '';
+  if (!empty($assistant_message['content']) && is_array($assistant_message['content'])) {
+    foreach ($assistant_message['content'] as $chunk) {
+      // Assistants API suele usar 'text' => ['value'=>...]
+      if (isset($chunk['text']['value']) && is_string($chunk['text']['value'])) {
+        $out .= $chunk['text']['value'];
+      } elseif (isset($chunk['text']) && is_string($chunk['text'])) {
+        $out .= $chunk['text'];
+      }
+    }
+  }
+  // Fallback: a veces viene como 'text' plano
+  if ($out === '' && isset($assistant_message['text']) && is_string($assistant_message['text'])) {
+    $out = $assistant_message['text'];
+  }
+  return trim($out);
+}
+
+function td_extract_p5_code(string $text): ?string {
+  if ($text === '') return null;
+
+  // 1) Fences: ```js / ```javascript / ```p5
+  if (preg_match('/```(?:js|javascript|p5)?\s*([\s\S]*?)```/i', $text, $m)) {
+    $code = trim($m[1]);
+  } else {
+    // 2) Sin fences: acepta si parece sketch de p5 (setup + draw)
+    $looks_like_sketch = stripos($text, 'function setup') !== false && stripos($text, 'function draw') !== false;
+    $code = $looks_like_sketch ? trim($text) : null;
+  }
+
+  if (!$code) return null;
+
+  // Limpieza mínima
+  $code = preg_replace("/^\xEF\xBB\xBF/", '', $code); // BOM
+  $code = str_replace("\r\n", "\n", $code);
+
+  return $code !== '' ? $code : null;
+}
+
+function td_enqueue_p5_and_sketch(string $code): void {
+  // Carga p5
+  wp_enqueue_script('p5', 'https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js', [], null, true);
+
+  // Opción A: inline (rápida)
+  if (!headers_sent()) {
+    wp_add_inline_script('p5', $code);
+    return;
+  }
+
+  // Opción B: si CSP/no-inline, escribe a archivo en uploads
+  $handle = 'td-sketch-'.wp_generate_uuid4();
+  $up = wp_upload_dir();
+  $dir = trailingslashit($up['basedir']).'td-sketches';
+  if (!is_dir($dir)) { wp_mkdir_p($dir); }
+  $path = $dir.'/'.$handle.'.js';
+  file_put_contents($path, $code);
+  $url = trailingslashit($up['baseurl']).'td-sketches/'.$handle.'.js';
+  wp_enqueue_script($handle, $url, ['p5'], null, true);
+}
+
+// ===== FIN utilidades =====
+
 /**
  * Shortcode: [p5js_visual data_url="" user_prompt="" data_format="auto|csv|json" width="800" height="500" cache="30"]
  */
@@ -93,4 +157,5 @@ require_once plugin_dir_path(__FILE__) . 'includes/enqueue.php';
 require_once plugin_dir_path(__FILE__) . 'includes/openai.php';
 if (is_admin()) {
     require_once plugin_dir_path(__FILE__) . 'includes/settings.php';
+    require_once plugin_dir_path(__FILE__) . 'includes/test-extractor.php';
 }
