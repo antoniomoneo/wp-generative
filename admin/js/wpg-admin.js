@@ -140,9 +140,12 @@
     const textareaResponse = $('#wpg_response');
     function getCode() { return cm ? cm.getValue() : textareaCode.val(); }
     function setCode(v) { if (cm) { cm.setValue(v); } else { textareaCode.val(v); } }
-    function extractCodeBlock(text) {
-        const match = /```(?:javascript|js)?\s*([\s\S]*?)```/i.exec(text || '');
-        return (match ? match[1] : text || '').trim();
+    function syncEditor() { if (cm) { cm.save(); } }
+    function extractCodeFromMarkdown(text) {
+        if (!text) return '';
+        const re = /```(?:javascript|js)?\s*([\s\S]*?)```/i;
+        const match = text.match(re);
+        return (match && match[1]) ? match[1].trim() : text.trim();
     }
     let lastCode = '';
     const datasetList = $('#wpg_dataset_list');
@@ -222,7 +225,7 @@
             .done(res => {
                 if (res.success) {
                     textareaResponse.val(JSON.stringify(res, null, 2));
-                    let code = extractCodeBlock(res.data.code);
+                    let code = extractCodeFromMarkdown(res.data.code);
                     lastCode = code;
                     setCode(code);
                     renderSketch(code);
@@ -244,6 +247,7 @@
 
     btnRun.on('click', function (e) {
         e.preventDefault();
+        syncEditor();
         const code = getCode();
         if (code.trim() === '') {
             alert('No hay código para ejecutar');
@@ -254,6 +258,7 @@
 
     btnSave.on('click', function (e) {
         e.preventDefault();
+        syncEditor();
         const slug = $('#wpg_slug').val();
         const code = getCode();
         if (!slug || !code) {
