@@ -21,9 +21,12 @@
     } };
     cm.addOverlay(varOverlay);
   }
-  function stripCodeFences(text){
+  function syncEditor(){ if (cm) { cm.save(); } }
+  function extractCodeFromMarkdown(text) {
     if (!text) return '';
-    return text.replace(/^\s*```[a-z]*\s*/i, '').replace(/\s*```\s*$/i, '');
+    const re = /```(?:javascript|js)?\s*([\s\S]*?)```/i;
+    const match = text.match(re);
+    return (match && match[1]) ? match[1].trim() : text.trim();
   }
   function hasSetup(code){ return /function\s+setup\s*\(|\bsetup\s*=\s*\(/.test(code); }
   function hasDraw(code){  return /function\s+draw\s*\(|\bdraw\s*=\s*\(/.test(code); }
@@ -64,7 +67,7 @@
         action: 'td_generate_code', nonce: tdGenerative.nonce, datasetUrl, userPrompt
       }).done(function(resp){
         if (!resp || !resp.success){ $status.addClass('error').text(resp?.data?.message || 'Error desconocido.'); return; }
-        let code = stripCodeFences(resp.data.code || '');
+        let code = extractCodeFromMarkdown(resp.data.code || '');
         if (cm){ cm.setValue(code); cm.focus(); } else { $('#td_code_editor').val(code); }
         if (!hasSetup(code) || !hasDraw(code)){
           $status.addClass('error').text('La respuesta NO es un sketch completo (faltan setup() o draw()).');
@@ -79,6 +82,7 @@
 
     $prevBtn.on('click', function(e){
       e.preventDefault();
+      syncEditor();
       const iframe = document.getElementById('td_preview_iframe');
       const code = cm ? cm.getValue() : ($('#td_code_editor').val() || '');
       if (!hasSetup(code) || !hasDraw(code)){ $status.addClass('error').text('No se puede previsualizar: faltan setup() o draw().'); return; }
@@ -89,6 +93,7 @@
 
     $copy.on('click', function(e){
       e.preventDefault();
+      syncEditor();
       const val = cm ? cm.getValue() : ($('#td_code_editor').val() || '');
       navigator.clipboard.writeText(val).then(()=> $status.removeClass('error').text('Código copiado.'), ()=> $status.addClass('error').text('No se pudo copiar.'));
     });
