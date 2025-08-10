@@ -10,12 +10,49 @@ function wpg_extract_p5_code( $text ) {
   // 2) normalize line endings and trim
   $text = preg_replace("/\r\n|\r/", "\n", $text);
   $text = trim( $text );
-  return $text;
+  return wpg_normalize_p5_code( $text );
+}
+
+function wpg_normalize_p5_code( $code ) {
+  if ( ! is_string( $code ) ) {
+    return '';
+  }
+
+  $replacements = array(
+    '“' => '"',
+    '”' => '"',
+    '‘' => "'",
+    '’' => "'",
+  );
+  $code = strtr( $code, $replacements );
+
+  if ( strpos( $code, 'function setup' ) === false ) {
+    $code = "function setup() {\n}\n\n" . $code;
+  }
+  if ( strpos( $code, 'function draw' ) === false ) {
+    $code .= "\n\nfunction draw() {\n}\n";
+  }
+
+  return trim( $code );
 }
 
 function wpg_is_valid_p5( $code ) {
   return ( strpos( $code, 'function setup' ) !== false
         && strpos( $code, 'function draw' ) !== false );
+}
+
+function wpg_normalize_p5_json( $json ) {
+  if ( is_string( $json ) ) {
+    $json = json_decode( $json, true );
+  }
+  if ( ! is_array( $json ) ) {
+    return '';
+  }
+  $code = '';
+  if ( isset( $json['data']['code'] ) && is_string( $json['data']['code'] ) ) {
+    $code = $json['data']['code'];
+  }
+  return wpg_extract_p5_code( $code );
 }
 
 function wpg_call_openai_p5( $dataset_url, $user_prompt ) {
