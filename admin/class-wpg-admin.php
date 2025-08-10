@@ -117,6 +117,12 @@ class WPG_Admin {
             '1.3.0',
             true
         );
+        wp_enqueue_style(
+            'wpg-admin-css',
+            plugin_dir_url( __FILE__ ) . 'css/wp-generative-admin.css',
+            [],
+            WPG_PLUGIN_VERSION
+        );
         if ( $editor_settings ) {
             wp_localize_script( 'wpg-admin-js', 'wpgEditorSettings', $editor_settings );
         }
@@ -143,36 +149,36 @@ class WPG_Admin {
             <p><?php printf( esc_html__( 'Versión: %s', 'wpg' ), esc_html( WPG_PLUGIN_VERSION ) ); ?></p>
             <form id="wpg-sandbox-form">
                 <p><label for="wpg_prompt"><?php esc_html_e( 'Prompt', 'wpg' ); ?></label></p>
-                <p><textarea id="wpg_prompt" rows="4" cols="50"><?php esc_html_e( 'crea el código p5.js para una visualización generativa del dataset en la URL.', 'wpg' ); ?></textarea></p>
+                <p><textarea id="wpg_prompt" rows="4"><?php esc_html_e( 'crea el código p5.js para una visualización generativa del dataset en la URL.', 'wpg' ); ?></textarea></p>
                 <p><label for="wpg_dataset"><?php esc_html_e( 'Dataset URL', 'wpg' ); ?></label></p>
                 <p>
-                    <input type="text" id="wpg_dataset" size="50" list="wpg_dataset_list" />
+                    <input type="text" id="wpg_dataset" list="wpg_dataset_list" />
                     <datalist id="wpg_dataset_list"></datalist>
                 </p>
                 <p><button type="button" id="wpg-generate" class="button button-primary"><?php esc_html_e( 'Generar', 'wpg' ); ?></button></p>
             </form>
             <p><label for="wpg_request"><?php esc_html_e( 'Llamada al API', 'wpg' ); ?></label></p>
-            <p><textarea id="wpg_request" rows="6" cols="60" readonly></textarea></p>
+              <p><textarea id="wpg_request" rows="6" readonly></textarea></p>
             <p><label for="wpg_response"><?php esc_html_e( 'Respuesta del asistente', 'wpg' ); ?></label></p>
-            <p><textarea id="wpg_response" rows="6" cols="60" placeholder="<?php esc_attr_e( 'Aquí aparecerá la respuesta del asistente...', 'wpg' ); ?>"></textarea></p>
-            <div id="wpg-editor" style="display:flex;gap:1em;margin-top:2em;">
-                <textarea id="wpgen-code" style="width:50%;height:400px;"></textarea>
-                <div id="wpg-preview" style="flex:1;height:400px;border:1px solid #ccc;"></div>
-            </div>
-            <div style="margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                <button id="wpgen-btn-update-code" type="button" class="button button-primary">
-                    <?php esc_html_e( 'Actualizar código (reemplazar let data…)', 'wpg' ); ?>
-                </button>
-                <small id="wpgen-update-hint" style="opacity:.75">
-                    <?php esc_html_e( 'Usará la URL del dataset para regenerar data o years con todos los registros. Debería ser igual a Dataset URL.', 'wpg' ); ?>
-                </small>
-            </div>
-            <input type="url" id="wpgen-dataset-url" placeholder="https://raw.githubusercontent.com/usuario/repo/main/dataset.csv" style="margin-top:6px; width:100%" />
-            <p><button id="wpg-run" class="button"><?php esc_html_e( 'Vista previa', 'wpg' ); ?></button></p>
-            <div id="wpg-controls" style="margin-top:1em;"></div>
-            <h2><?php esc_html_e( 'Guardar visualización', 'wpg' ); ?></h2>
-            <p><label for="wpg_slug">Slug</label> <input type="text" id="wpg_slug" /></p>
-            <p><button id="wpg-save" class="button button-primary"><?php esc_html_e( 'Guardar', 'wpg' ); ?></button> <span id="wpg-save-status"></span></p>
+              <p><textarea id="wpg_response" rows="6" placeholder="<?php esc_attr_e( 'Aquí aparecerá la respuesta del asistente...', 'wpg' ); ?>"></textarea></p>
+              <div id="wpg-editor">
+                  <textarea id="wpgen-code"></textarea>
+                  <div id="wpg-preview"></div>
+              </div>
+              <div class="wpgen-update-row">
+                  <button id="wpgen-btn-update-code" type="button" class="button button-primary">
+                      <?php esc_html_e( 'Actualizar código (reemplazar let data…)', 'wpg' ); ?>
+                  </button>
+                  <small id="wpgen-update-hint">
+                      <?php esc_html_e( 'Usará la URL del dataset para regenerar data o years con todos los registros. Debería ser igual a Dataset URL.', 'wpg' ); ?>
+                  </small>
+              </div>
+              <input type="url" id="wpgen-dataset-url" placeholder="https://raw.githubusercontent.com/usuario/repo/main/dataset.csv" />
+              <p><button id="wpg-run" class="button"><?php esc_html_e( 'Vista previa', 'wpg' ); ?></button></p>
+              <div id="wpg-controls"></div>
+              <h2><?php esc_html_e( 'Guardar visualización', 'wpg' ); ?></h2>
+              <p><label for="wpg_slug">Slug</label> <input type="text" id="wpg_slug" /></p>
+              <p><button id="wpg-save" class="button button-primary"><?php esc_html_e( 'Guardar', 'wpg' ); ?></button> <span id="wpg-save-status"></span></p>
         </div>
         <?php
     }
