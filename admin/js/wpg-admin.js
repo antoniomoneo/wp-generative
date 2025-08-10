@@ -112,16 +112,19 @@
             const rows = await fetchFullCsv(datasetUrl);
             if (!rows?.length) throw new Error('El CSV no tiene filas.');
 
-            let newChunk = buildJsLiteral(rows, 'rows');
-
             const hasData = /(let|const|var)\s+data\s*=/.test(source);
             const hasYears = /(let|const|var)\s+years\s*=/.test(source);
-            if (!hasData && hasYears) {
-                const yearCol = detectYearColumn(rows);
-                newChunk = buildJsLiteral(rows, 'years', yearCol);
+            let updated = source;
+            if (hasData && window.wpgen && wpgen.transformP5) {
+                updated = wpgen.transformP5(source, { injectData: rows }).code;
+            } else {
+                let newChunk = buildJsLiteral(rows, 'rows');
+                if (!hasData && hasYears) {
+                    const yearCol = detectYearColumn(rows);
+                    newChunk = buildJsLiteral(rows, 'years', yearCol);
+                }
+                updated = replaceDataOrYearsChunk(source, newChunk);
             }
-
-            const updated = replaceDataOrYearsChunk(source, newChunk);
             setCode(updated);
             lastCode = updated;
             if (hintEl) hintEl.textContent = 'Código actualizado con el dataset completo.';
@@ -226,8 +229,6 @@
                 if (res.success) {
                     textareaResponse.val(JSON.stringify(res, null, 2));
                     let code = extractCodeFromMarkdown(res.data.code);
-                    lastCode = code;
-                    setCode(code);
                     renderSketch(code);
                 } else {
                     textareaResponse.val(res.data.api_response || JSON.stringify(res, null, 2));
@@ -283,6 +284,14 @@
     });
 
     function renderSketch(code) {
+        var proxyBase = (WPG_Ajax && WPG_Ajax.proxyBase) || null;
+        var out = (window.wpgen && wpgen.transformP5)
+            ? wpgen.transformP5(code, { proxyBase: proxyBase, makeResponsive: true })
+            : { code: code };
+        if (out.warnings && out.warnings.length) {
+            console.warn('[wpgen][p5]', out.warnings);
+        }
+        code = out.code;
         lastCode = code;
         setCode(code);
         $('#wpg-preview').empty();

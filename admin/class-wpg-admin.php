@@ -111,9 +111,16 @@ class WPG_Admin {
             true
         );
         wp_enqueue_script(
+            'wpgen-transform-p5',
+            plugin_dir_url( __FILE__ ) . '../assets/js/wpgen-transform-p5.js',
+            [],
+            '1.0.0',
+            true
+        );
+        wp_enqueue_script(
             'wpg-admin-js',
             plugin_dir_url( __FILE__ ) . 'js/wpg-admin.js',
-            [ 'jquery', 'p5', 'wp-theme-plugin-editor' ],
+            [ 'jquery', 'p5', 'wp-theme-plugin-editor', 'wpgen-transform-p5' ],
             '1.3.0',
             true
         );
@@ -121,9 +128,10 @@ class WPG_Admin {
             wp_localize_script( 'wpg-admin-js', 'wpgEditorSettings', $editor_settings );
         }
         wp_localize_script( 'wpg-admin-js', 'WPG_Ajax', [
-            'ajax_url' => admin_url( 'admin-ajax.php' ),
-            'nonce'    => wp_create_nonce( 'wpg_nonce' ),
-            'p5_url'   => plugin_dir_url( __FILE__ ) . '../assets/js/p5.min.js',
+            'ajax_url'  => admin_url( 'admin-ajax.php' ),
+            'nonce'     => wp_create_nonce( 'wpg_nonce' ),
+            'p5_url'    => plugin_dir_url( __FILE__ ) . '../assets/js/p5.min.js',
+            'proxyBase' => esc_url_raw( rest_url( 'wp-generative/v1/proxy' ) ),
         ] );
     }
 

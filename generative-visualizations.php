@@ -286,10 +286,12 @@ add_action( 'wp_enqueue_scripts', 'gv_enqueue_scripts' );
 function gv_enqueue_admin_scripts( $hook ) {
     if ( isset( $_GET['page'] ) && 'gv-sandbox' === $_GET['page'] ) {
         wp_enqueue_script( 'p5', plugin_dir_url( __FILE__ ) . 'assets/js/p5.min.js', [], '1.9.0', true );
-        wp_enqueue_script( 'gv-sandbox', plugin_dir_url( __FILE__ ) . 'assets/sandbox.js', [ 'p5' ], GV_PLUGIN_VERSION, true );
+        wp_enqueue_script( 'wpgen-transform-p5', plugin_dir_url( __FILE__ ) . 'assets/js/wpgen-transform-p5.js', [], GV_PLUGIN_VERSION, true );
+        wp_enqueue_script( 'gv-sandbox', plugin_dir_url( __FILE__ ) . 'assets/sandbox.js', [ 'p5', 'wpgen-transform-p5' ], GV_PLUGIN_VERSION, true );
         wp_localize_script( 'gv-sandbox', 'gvSandbox', [
-            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-            'p5Url'   => plugin_dir_url( __FILE__ ) . 'assets/js/p5.min.js',
+            'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+            'p5Url'     => plugin_dir_url( __FILE__ ) . 'assets/js/p5.min.js',
+            'proxyBase' => esc_url_raw( rest_url( 'wp-generative/v1/proxy' ) ),
         ] );
         wp_enqueue_style( 'gv-style', plugin_dir_url( __FILE__ ) . 'assets/style.css', [], GV_PLUGIN_VERSION );
         return;

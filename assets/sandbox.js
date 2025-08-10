@@ -14,8 +14,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function runSketch(){
     preview.innerHTML = '';
-    const code = codeEl.value;
+    let code = codeEl.value;
     if (!code.trim()) return;
+    const proxyBase = (gvSandbox && gvSandbox.proxyBase) || null;
+    if (window.wpgen && wpgen.transformP5) {
+      const out = wpgen.transformP5(code, { proxyBase: proxyBase, makeResponsive: true });
+      if (out.warnings && out.warnings.length) console.warn('[wpgen][p5]', out.warnings);
+      code = out.code;
+    }
     const safe = code.replace(/<\/script>/g, '<\\/script>');
     const doc = `<!DOCTYPE html><html><head><script src="${gvSandbox.p5Url}"></script></head><body><script>${safe}</script></body></html>`;
     const iframe = document.createElement('iframe');
@@ -35,7 +41,14 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const res = await fetch(gvSandbox.ajaxUrl, { method: 'POST', body }).then(r=>r.json());
         if (res.success) {
-          codeEl.value = res.data.code;
+          let code = res.data.code || '';
+          const proxyBase = (gvSandbox && gvSandbox.proxyBase) || null;
+          if (window.wpgen && wpgen.transformP5) {
+            const out = wpgen.transformP5(code, { proxyBase: proxyBase, makeResponsive: true });
+            if (out.warnings && out.warnings.length) console.warn('[wpgen][p5]', out.warnings);
+            code = out.code;
+          }
+          codeEl.value = code;
           statusEl.textContent = 'Generado';
         } else {
           statusEl.textContent = 'Error';
