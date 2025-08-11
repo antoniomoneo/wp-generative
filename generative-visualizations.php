@@ -414,8 +414,18 @@ function gv_generate_p5_ajax() {
     if ( ! is_array( $payload ) || empty( $payload['code'] ) ) {
         wp_send_json_error( 'bad_payload' );
     }
-    // Por si acaso, limpiar fences ```
-    $payload['code'] = preg_replace( '/^```[a-zA-Z]*\n|```$/m', '', (string) $payload['code'] );
+    // Por si acaso, limpiar fences ``` (robusto: lenguaje opcional, espacios y CRLF)
+    $code = (string) $payload['code'];
+    // quita apertura ```lang\n (con espacios opcionales y CRLF)
+    $code = preg_replace('/^\s*```[a-zA-Z0-9_-]*\s*\r?\n/', '', $code);
+    // quita cierre ``` al final (con salto opcional)
+    $code = preg_replace('/\r?\n?```\s*$/', '', $code);
+    $payload['code'] = $code;
+
+    // Señaliza si parece traer datos inline (para depurar desde el cliente)
+    if (strpos($code, 'let data = [') !== false || strpos($code, 'const data = [') !== false) {
+        $payload['hint_inline_data'] = true;
+    }
     $payload['mode'] = 'assistant';
     wp_send_json_success( $payload );
 }
