@@ -356,78 +356,67 @@ function gv_generate_p5_ajax() {
     if ( ! $prompt ) {
         wp_send_json_error( 'no_prompt' );
     }
-    $creds   = wpg_get_openai_credentials();
-    $api_key = $creds['api_key'];
+    // ===== NUEVA RUTA: Assistants v2 (threads + runs) usando TU assistant con schema =====
+    $creds        = wpg_get_openai_credentials();
+    $api_key      = $creds['api_key'];
+    $assistant_id = ! empty( $creds['assistant_id'] ) ? $creds['assistant_id'] : 'asst_SUJ2hcuwEXtbbakF2lqSo7gD';
     if ( ! $api_key ) {
         wp_send_json_error( 'no_api_key' );
     }
-    // Schema A+B (estricto, sin patterns)
-    $schema = [
-        'type' => 'object',
-        'additionalProperties' => false,
-        'required' => [ 'code', 'meta', 'diagnostics' ],
-        'properties' => [
-            'code' => [ 'type' => 'string', 'minLength' => 200 ],
-            'meta' => [
-                'type' => 'object', 'additionalProperties' => false, 'required' => [ 'canvas' ],
-                'properties' => [
-                    'canvas' => [
-                        'type' => 'object', 'additionalProperties' => false, 'required' => [ 'width','height' ],
-                        'properties' => [ 'width' => [ 'type'=>'integer' ], 'height' => [ 'type'=>'integer' ] ]
-                    ]
-                ]
-            ],
-            'diagnostics' => [
-                'type'=>'object','additionalProperties'=>false,'required'=>['validation_passed','lint_warnings'],
-                'properties'=>[
-                    'validation_passed'=>['type'=>'boolean'],
-                    'lint_warnings'=>['type'=>'array','items'=>['type'=>'string']]
-                ]
-            ]
-        ]
-    ];
-    // Prompt del sistema + usuario (el sandbox solo manda "prompt")
-    $body = [
-        'model' => 'gpt-4o-2024-08-06',
-        'response_format' => [
-            'type' => 'json_schema',
-            'json_schema' => [ 'name' => 'p5_sketch', 'strict' => true, 'schema' => $schema ]
-        ],
-        'input' => [
-            [ 'role' => 'system', 'content' =>
-                "Devuelve SOLO un JSON {code, meta:{canvas:{width,height}}, diagnostics}. Sin HTML ni ```.\n".
-                "El code debe ser p5.js global mode con setup()/createCanvas()/draw().\n".
-                "Si el prompt incluye dataset_url, usa preload()+loadTable(url,'csv','header'); si no, datos inline mínimos.\n".
-                "Por defecto añade título (drawTitle) y hover tooltip (hitTest/mouseMoved/drawTooltip)." ],
-            [ 'role' => 'user', 'content' => $prompt ]
-        ],
-        'max_output_tokens' => 4000,
-    ];
-    $args = [
-        'headers' => [
-            'Authorization' => 'Bearer ' . $api_key,
-            'Content-Type'  => 'application/json',
-        ],
-        'body'    => wp_json_encode( $body ),
-        'timeout' => 60,
-    ];
-    $res = wp_remote_post( 'https://api.openai.com/v1/responses', $args );
-    if ( is_wp_error( $res ) ) {
-        wp_send_json_error( 'api_error' );
+    if ( ! $assistant_id ) {
+        wp_send_json_error( 'no_assistant' );
     }
-    $json = json_decode( (string) wp_remote_retrieve_body( $res ), true );
-    $out  = '';
-    if ( isset( $json['output'][0]['content'][0]['text'] ) ) {
-        $out = (string) $json['output'][0]['content'][0]['text'];
-    } elseif ( isset( $json['output_text'] ) ) {
-        $out = (string) $json['output_text'];
+    $headers = [
+        'Authorization' => 'Bearer ' . $api_key,
+        'Content-Type'  => 'application/json',
+    ];
+    // 1) Crear thread con el mensaje del usuario (sin system; usa las Instructions del Assistant)
+    $t_res = wp_remote_post( 'https://api.openai.com/v1/threads', [
+        'headers' => $headers,
+        'body'    => wp_json_encode( [ 'messages' => [ [ 'role' => 'user', 'content' => $prompt ] ] ] ),
+        'timeout' => 30,
+    ] );
+    if ( is_wp_error( $t_res ) ) wp_send_json_error( 'api_error' );
+    $t_json     = json_decode( wp_remote_retrieve_body( $t_res ), true );
+    $thread_id  = $t_json['id'] ?? null;
+    if ( ! $thread_id ) wp_send_json_error( 'api_error' );
+    // 2) Lanzar run con tu assistant configurado con schema estricto
+    $r_res = wp_remote_post( "https://api.openai.com/v1/threads/$thread_id/runs", [
+        'headers' => $headers,
+        'body'    => wp_json_encode( [ 'assistant_id' => $assistant_id ] ),
+        'timeout' => 30,
+    ] );
+    if ( is_wp_error( $r_res ) ) wp_send_json_error( 'api_error' );
+    $r_json   = json_decode( wp_remote_retrieve_body( $r_res ), true );
+    $run_id   = $r_json['id'] ?? null;
+    if ( ! $run_id ) wp_send_json_error( 'api_error' );
+    // 3) Poll hasta completar
+    $status = $r_json['status'] ?? 'queued';
+    $tries  = 0;
+    while ( in_array( $status, [ 'queued', 'in_progress', 'requires_action' ], true ) && $tries < 30 ) {
+        sleep( 1 );
+        $check = wp_remote_get( "https://api.openai.com/v1/threads/$thread_id/runs/$run_id", [ 'headers' => $headers, 'timeout' => 20 ] );
+        if ( is_wp_error( $check ) ) break;
+        $r_json = json_decode( wp_remote_retrieve_body( $check ), true );
+        $status = $r_json['status'] ?? 'failed';
+        $tries++;
     }
-    $payload = json_decode( $out, true );
+    if ( $status !== 'completed' ) {
+        wp_send_json_error( 'run_incomplete' );
+    }
+    // 4) Leer el último mensaje del thread
+    $m_res = wp_remote_get( "https://api.openai.com/v1/threads/$thread_id/messages?limit=1", [ 'headers' => $headers, 'timeout' => 20 ] );
+    if ( is_wp_error( $m_res ) ) wp_send_json_error( 'api_error' );
+    $m_json  = json_decode( wp_remote_retrieve_body( $m_res ), true );
+    $content = $m_json['data'][0]['content'][0]['text']['value'] ?? '';
+    // 5) Parsear el JSON del payload (el Assistant ya aplica el schema/strict)
+    $payload = json_decode( $content, true );
     if ( ! is_array( $payload ) || empty( $payload['code'] ) ) {
         wp_send_json_error( 'bad_payload' );
     }
-    // Quitar fences por seguridad
+    // Por si acaso, limpiar fences ```
     $payload['code'] = preg_replace( '/^```[a-zA-Z]*\n|```$/m', '', (string) $payload['code'] );
+    $payload['mode'] = 'assistant';
     wp_send_json_success( $payload );
 }
 add_action( 'wp_ajax_gv_generate_p5', 'gv_generate_p5_ajax' );
