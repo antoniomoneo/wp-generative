@@ -361,36 +361,74 @@ function gv_generate_p5_ajax() {
     if ( ! $api_key ) {
         wp_send_json_error( 'no_api_key' );
     }
-    $response = wp_remote_post( 'https://api.openai.com/v1/chat/completions', [
+    // Schema A+B (estricto, sin patterns)
+    $schema = [
+        'type' => 'object',
+        'additionalProperties' => false,
+        'required' => [ 'code', 'meta', 'diagnostics' ],
+        'properties' => [
+            'code' => [ 'type' => 'string', 'minLength' => 200 ],
+            'meta' => [
+                'type' => 'object', 'additionalProperties' => false, 'required' => [ 'canvas' ],
+                'properties' => [
+                    'canvas' => [
+                        'type' => 'object', 'additionalProperties' => false, 'required' => [ 'width','height' ],
+                        'properties' => [ 'width' => [ 'type'=>'integer' ], 'height' => [ 'type'=>'integer' ] ]
+                    ]
+                ]
+            ],
+            'diagnostics' => [
+                'type'=>'object','additionalProperties'=>false,'required'=>['validation_passed','lint_warnings'],
+                'properties'=>[
+                    'validation_passed'=>['type'=>'boolean'],
+                    'lint_warnings'=>['type'=>'array','items'=>['type'=>'string']]
+                ]
+            ]
+        ]
+    ];
+    // Prompt del sistema + usuario (el sandbox solo manda "prompt")
+    $body = [
+        'model' => 'gpt-4o-2024-08-06',
+        'response_format' => [
+            'type' => 'json_schema',
+            'json_schema' => [ 'name' => 'p5_sketch', 'strict' => true, 'schema' => $schema ]
+        ],
+        'input' => [
+            [ 'role' => 'system', 'content' =>
+                "Devuelve SOLO un JSON {code, meta:{canvas:{width,height}}, diagnostics}. Sin HTML ni ```.\n".
+                "El code debe ser p5.js global mode con setup()/createCanvas()/draw().\n".
+                "Si el prompt incluye dataset_url, usa preload()+loadTable(url,'csv','header'); si no, datos inline mínimos.\n".
+                "Por defecto añade título (drawTitle) y hover tooltip (hitTest/mouseMoved/drawTooltip)." ],
+            [ 'role' => 'user', 'content' => $prompt ]
+        ],
+        'max_output_tokens' => 4000,
+    ];
+    $args = [
         'headers' => [
             'Authorization' => 'Bearer ' . $api_key,
             'Content-Type'  => 'application/json',
         ],
-        'body'    => wp_json_encode([
-            'model'    => 'gpt-4o-mini',
-            'messages' => [
-                [ 'role' => 'system', 'content' => 'Eres un asistente que genera código p5.js. Devuelve solo el código.' ],
-                [ 'role' => 'user',   'content' => $prompt ],
-            ],
-            'temperature' => 0.7,
-        ]),
-        'timeout' => 45,
-    ] );
-    if ( is_wp_error( $response ) ) {
+        'body'    => wp_json_encode( $body ),
+        'timeout' => 60,
+    ];
+    $res = wp_remote_post( 'https://api.openai.com/v1/responses', $args );
+    if ( is_wp_error( $res ) ) {
         wp_send_json_error( 'api_error' );
     }
-    $data = json_decode( wp_remote_retrieve_body( $response ), true );
-    $assistant_message = $data['choices'][0]['message'] ?? [];
-    $raw_text = td_get_assistant_text( $assistant_message );
-    $code = td_extract_p5_code( $raw_text );
-
-    if ( ! $code ) {
-        error_log( '[TD] No se encontró bloque p5.js. Texto recibido: ' . substr( $raw_text, 0, 500 ) );
-        wp_send_json( [ 'success' => false, 'data' => [ 'message' => 'La respuesta no contiene código p5.js detectable' ] ] );
+    $json = json_decode( (string) wp_remote_retrieve_body( $res ), true );
+    $out  = '';
+    if ( isset( $json['output'][0]['content'][0]['text'] ) ) {
+        $out = (string) $json['output'][0]['content'][0]['text'];
+    } elseif ( isset( $json['output_text'] ) ) {
+        $out = (string) $json['output_text'];
     }
-
-    td_enqueue_p5_and_sketch( $code );
-    wp_send_json( [ 'success' => true ] );
+    $payload = json_decode( $out, true );
+    if ( ! is_array( $payload ) || empty( $payload['code'] ) ) {
+        wp_send_json_error( 'bad_payload' );
+    }
+    // Quitar fences por seguridad
+    $payload['code'] = preg_replace( '/^```[a-zA-Z]*\n|```$/m', '', (string) $payload['code'] );
+    wp_send_json_success( $payload );
 }
 add_action( 'wp_ajax_gv_generate_p5', 'gv_generate_p5_ajax' );
 
