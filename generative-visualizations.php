@@ -104,28 +104,6 @@ function gv_add_metaboxes() {
 }
 add_action( 'add_meta_boxes', 'gv_add_metaboxes' );
 
-// Sandbox page for generating custom p5 sketches via OpenAI
-function gv_add_sandbox_page() {
-    add_submenu_page( 'upload.php', 'Sandbox GV', 'Sandbox GV', 'upload_files', 'gv-sandbox', 'gv_render_sandbox_page' );
-}
-// Eliminamos la página de sandbox del menú para evitar nuevos ítems
-// add_action( 'admin_menu', 'gv_add_sandbox_page' );
-
-function gv_render_sandbox_page() { ?>
-    <div class="wrap">
-        <h1>Sandbox Generativa</h1>
-        <p>Versión: <?php echo esc_html( GV_PLUGIN_VERSION ); ?></p>
-        <p><textarea id="gv-sandbox-prompt" rows="3" style="width:100%;" placeholder="Describe la visualización..."></textarea></p>
-        <p><button id="gv-sandbox-generate" class="button">Generar</button></p>
-        <p><textarea id="gv-sandbox-code" rows="10" style="width:100%;" placeholder="// Código p5.js"></textarea></p>
-        <p><button id="gv-sandbox-run" class="button">Vista previa</button></p>
-        <div id="gv-sandbox-preview" style="border:1px solid #ccc;min-height:200px;"></div>
-        <h2>Guardar en la librería</h2>
-        <p><label>Slug: <input type="text" id="gv-sandbox-slug" /></label></p>
-        <p><button id="gv-sandbox-save" class="button button-primary">Guardar</button> <span id="gv-sandbox-status"></span></p>
-    </div>
-<?php }
-
 function gv_render_metabox( $post ) {
     wp_nonce_field( 'gv_save_metabox', 'gv_metabox_nonce' );
 
@@ -284,18 +262,6 @@ function gv_enqueue_scripts() {
 add_action( 'wp_enqueue_scripts', 'gv_enqueue_scripts' );
 
 function gv_enqueue_admin_scripts( $hook ) {
-    if ( isset( $_GET['page'] ) && 'gv-sandbox' === $_GET['page'] ) {
-        wp_enqueue_script( 'p5', plugin_dir_url( __FILE__ ) . 'assets/js/p5.min.js', [], '1.9.0', true );
-        wp_enqueue_script( 'wpgen-transform-p5', plugin_dir_url( __FILE__ ) . 'assets/js/wpgen-transform-p5.js', [], GV_PLUGIN_VERSION, true );
-        wp_enqueue_script( 'gv-sandbox', plugin_dir_url( __FILE__ ) . 'assets/sandbox.js', [ 'p5', 'wpgen-transform-p5' ], GV_PLUGIN_VERSION, true );
-        wp_localize_script( 'gv-sandbox', 'gvSandbox', [
-            'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-            'p5Url'     => plugin_dir_url( __FILE__ ) . 'assets/js/p5.min.js',
-            'proxyBase' => esc_url_raw( rest_url( 'wp-generative/v1/proxy' ) ),
-        ] );
-        wp_enqueue_style( 'gv-style', plugin_dir_url( __FILE__ ) . 'assets/style.css', [], GV_PLUGIN_VERSION );
-        return;
-    }
     if ( ! function_exists( 'get_current_screen' ) ) {
         return;
     }
@@ -347,118 +313,6 @@ function gv_save_image_ajax() {
     wp_send_json_success( [ 'id' => $attach_id ] );
 }
 add_action( 'wp_ajax_gv_save_image', 'gv_save_image_ajax' );
-
-function gv_generate_p5_ajax() {
-    if ( ! current_user_can( 'edit_posts' ) ) {
-        wp_send_json_error( 'permission' );
-    }
-    $prompt = sanitize_text_field( $_POST['prompt'] ?? '' );
-    if ( ! $prompt ) {
-        wp_send_json_error( 'no_prompt' );
-    }
-    // ===== NUEVA RUTA: Assistants v2 (threads + runs) usando TU assistant con schema =====
-    $creds        = wpg_get_openai_credentials();
-    $api_key      = $creds['api_key'];
-    $assistant_id = ! empty( $creds['assistant_id'] ) ? $creds['assistant_id'] : 'asst_SUJ2hcuwEXtbbakF2lqSo7gD';
-    if ( ! $api_key ) {
-        wp_send_json_error( 'no_api_key' );
-    }
-    if ( ! $assistant_id ) {
-        wp_send_json_error( 'no_assistant' );
-    }
-    $headers = [
-        'Authorization' => 'Bearer ' . $api_key,
-        'Content-Type'  => 'application/json',
-    ];
-    // 1) Crear thread con el mensaje del usuario (sin system; usa las Instructions del Assistant)
-    $t_res = wp_remote_post( 'https://api.openai.com/v1/threads', [
-        'headers' => $headers,
-        'body'    => wp_json_encode( [ 'messages' => [ [ 'role' => 'user', 'content' => $prompt ] ] ] ),
-        'timeout' => 30,
-    ] );
-    if ( is_wp_error( $t_res ) ) wp_send_json_error( 'api_error' );
-    $t_json     = json_decode( wp_remote_retrieve_body( $t_res ), true );
-    $thread_id  = $t_json['id'] ?? null;
-    if ( ! $thread_id ) wp_send_json_error( 'api_error' );
-    // 2) Lanzar run con tu assistant configurado con schema estricto
-    $r_res = wp_remote_post( "https://api.openai.com/v1/threads/$thread_id/runs", [
-        'headers' => $headers,
-        'body'    => wp_json_encode( [ 'assistant_id' => $assistant_id ] ),
-        'timeout' => 30,
-    ] );
-    if ( is_wp_error( $r_res ) ) wp_send_json_error( 'api_error' );
-    $r_json   = json_decode( wp_remote_retrieve_body( $r_res ), true );
-    $run_id   = $r_json['id'] ?? null;
-    if ( ! $run_id ) wp_send_json_error( 'api_error' );
-    // 3) Poll hasta completar
-    $status = $r_json['status'] ?? 'queued';
-    $tries  = 0;
-    while ( in_array( $status, [ 'queued', 'in_progress', 'requires_action' ], true ) && $tries < 30 ) {
-        sleep( 1 );
-        $check = wp_remote_get( "https://api.openai.com/v1/threads/$thread_id/runs/$run_id", [ 'headers' => $headers, 'timeout' => 20 ] );
-        if ( is_wp_error( $check ) ) break;
-        $r_json = json_decode( wp_remote_retrieve_body( $check ), true );
-        $status = $r_json['status'] ?? 'failed';
-        $tries++;
-    }
-    if ( $status !== 'completed' ) {
-        wp_send_json_error( 'run_incomplete' );
-    }
-    // 4) Leer el último mensaje del thread
-    $m_res = wp_remote_get( "https://api.openai.com/v1/threads/$thread_id/messages?limit=1", [ 'headers' => $headers, 'timeout' => 20 ] );
-    if ( is_wp_error( $m_res ) ) wp_send_json_error( 'api_error' );
-    $m_json  = json_decode( wp_remote_retrieve_body( $m_res ), true );
-    $content = $m_json['data'][0]['content'][0]['text']['value'] ?? '';
-    // 5) Parsear el JSON del payload (el Assistant ya aplica el schema/strict)
-    $payload = json_decode( $content, true );
-    if ( ! is_array( $payload ) || empty( $payload['code'] ) ) {
-        wp_send_json_error( 'bad_payload' );
-    }
-    // Por si acaso, limpiar fences ``` (robusto: lenguaje opcional, espacios y CRLF)
-    $code = (string) $payload['code'];
-    // quita apertura ```lang\n (con espacios opcionales y CRLF)
-    $code = preg_replace('/^\s*```[a-zA-Z0-9_-]*\s*\r?\n/', '', $code);
-    // quita cierre ``` al final (con salto opcional)
-    $code = preg_replace('/\r?\n?```\s*$/', '', $code);
-    $payload['code'] = $code;
-
-    // Señaliza si parece traer datos inline (para depurar desde el cliente)
-    if (strpos($code, 'let data = [') !== false || strpos($code, 'const data = [') !== false) {
-        $payload['hint_inline_data'] = true;
-    }
-    $payload['mode'] = 'assistant';
-    wp_send_json_success( $payload );
-}
-add_action( 'wp_ajax_gv_generate_p5', 'gv_generate_p5_ajax' );
-
-function gv_sandbox_save_ajax() {
-    if ( ! current_user_can( 'upload_files' ) ) {
-        wp_send_json_error( 'permission' );
-    }
-    $code   = wp_unslash( $_POST['code'] ?? '' );
-    $slug   = sanitize_title( $_POST['slug'] ?? '' );
-    $prompt = sanitize_text_field( $_POST['prompt'] ?? '' );
-    if ( ! $code || ! $slug ) {
-        wp_send_json_error( 'missing' );
-    }
-    $post_id = wp_insert_post([
-        'post_type'   => 'visualization',
-        'post_status' => 'publish',
-        'post_title'  => $slug,
-    ]);
-    if ( is_wp_error( $post_id ) ) {
-        wp_send_json_error( 'insert_error' );
-    }
-    update_post_meta( $post_id, '_gv_slug', $slug );
-    update_post_meta( $post_id, '_gv_library', 'p5' );
-    update_post_meta( $post_id, '_gv_viz_type', 'custom' );
-    update_post_meta( $post_id, '_gv_code', $code );
-    if ( $prompt ) {
-        update_post_meta( $post_id, '_gv_prompt', $prompt );
-    }
-    wp_send_json_success( [ 'id' => $post_id ] );
-}
-add_action( 'wp_ajax_gv_sandbox_save', 'gv_sandbox_save_ajax' );
 
 // Shortcode to trigger generation. Adds dataset_url attr and renders returned p5.js inside a <script>.
 if ( ! function_exists( 'gv_render_p5_shortcode' ) ) {
