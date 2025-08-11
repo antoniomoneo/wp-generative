@@ -47,8 +47,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // El handler ahora devuelve {code, meta, diagnostics}
         let code = (typeof res.data.code === 'string') ? res.data.code : '';
-        // Quitar fences ``` y ```javascript en caso de que queden
-        code = code.replace(/^```[a-zA-Z]*\n/m, '').replace(/```$/m, '');
+        // Limpieza de fences por si acaso (robusta: lenguaje/espacios/CRLF)
+        code = code
+          .replace(/^\s*```[a-zA-Z0-9_-]*\s*\r?\n/m, '')
+          .replace(/\r?\n?```\s*$/m, '');
         // (opcional) evitar document./window. si viniera
         if (/document\./.test(code) || /window\./.test(code)) {
           preview.innerHTML = '<pre class="gv-p5-error">El código contiene APIs de DOM no permitidas en el sandbox.</pre>';
@@ -58,7 +60,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Poner en el textarea y lanzar preview usando runSketch() existente
         codeEl.value = code;
         runSketch();
-        statusEl.textContent = 'OK';
+        // Aviso si detectamos datos inline (el servidor marca hint_inline_data)
+        if (res.data && res.data.hint_inline_data) {
+          console.warn('[gv] Aviso: parece que el assistant incluyó datos inline. Si el prompt tiene dataset_url, revisa sus Instrucciones.');
+        }
+        if (statusEl) statusEl.textContent = res.data.mode ? ('OK • ' + res.data.mode) : 'OK';
       } catch(err){
         statusEl.textContent = 'Error';
         preview.innerHTML = '<pre class="gv-p5-error">Fallo de red o JSON</pre>';
