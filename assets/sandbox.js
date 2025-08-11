@@ -40,21 +40,28 @@ document.addEventListener('DOMContentLoaded', () => {
       body.append('prompt', promptEl.value);
       try {
         const res = await fetch(gvSandbox.ajaxUrl, { method: 'POST', body }).then(r=>r.json());
-        if (res.success) {
-          let code = res.data.code || '';
-          const proxyBase = (gvSandbox && gvSandbox.proxyBase) || null;
-          if (window.wpgen && wpgen.transformP5) {
-            const out = wpgen.transformP5(code, { proxyBase: proxyBase, makeResponsive: true });
-            if (out.warnings && out.warnings.length) console.warn('[wpgen][p5]', out.warnings);
-            code = out.code;
-          }
-          codeEl.value = code;
-          statusEl.textContent = 'Generado';
-        } else {
+        if (!res || !res.success || !res.data) {
           statusEl.textContent = 'Error';
+          preview.innerHTML = '<pre class="gv-p5-error">No se pudo generar el sketch</pre>';
+          return;
         }
+        // El handler ahora devuelve {code, meta, diagnostics}
+        let code = (typeof res.data.code === 'string') ? res.data.code : '';
+        // Quitar fences ``` y ```javascript en caso de que queden
+        code = code.replace(/^```[a-zA-Z]*\n/m, '').replace(/```$/m, '');
+        // (opcional) evitar document./window. si viniera
+        if (/document\./.test(code) || /window\./.test(code)) {
+          preview.innerHTML = '<pre class="gv-p5-error">El código contiene APIs de DOM no permitidas en el sandbox.</pre>';
+          statusEl.textContent = 'Error';
+          return;
+        }
+        // Poner en el textarea y lanzar preview usando runSketch() existente
+        codeEl.value = code;
+        runSketch();
+        statusEl.textContent = 'OK';
       } catch(err){
         statusEl.textContent = 'Error';
+        preview.innerHTML = '<pre class="gv-p5-error">Fallo de red o JSON</pre>';
       }
       setTimeout(()=>statusEl.textContent='',2000);
     });
