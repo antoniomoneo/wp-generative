@@ -122,11 +122,11 @@ function drawOrbitalRings(el, data, palette) {
       const maxRadius = p.min(centerX, centerY) * 0.9;
 
       data.forEach((d, i) => {
-        const value = Math.abs(d.valor || d.mean || d.Anomaly || 0);
+        const val = Math.abs(d.valor || d.mean || d.Anomaly || 0);
         const radius = p.map(i, 0, data.length, 10, maxRadius);
         const color = p.color(palette[i % palette.length]);
         p.stroke(color);
-        const perturbation = p.map(value, 0, maxVal, 0, 30);
+        const perturbation = p.map(val, 0, maxVal, 0, 30);
 
         p.beginShape();
         for (let angle = 0; angle < 360; angle += 4) {
