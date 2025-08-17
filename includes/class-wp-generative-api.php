@@ -23,7 +23,7 @@ Requisitos:
   - define variables globales necesarias
   - preload() (si cargas CSV con loadTable), setup() y draw() obligatorios
   - si no puedes descargar el CSV, simula datos pero mantén preload/setup/draw.
-  No devuelvas comentarios explicativos ni bloques ```; solo el código.
+  La salida debe estar delimitada por las líneas `-----BEGIN_P5JS-----` y `-----END_P5JS-----`.
 - No serialices el código ni utilices placeholders; emplea los nombres reales de las columnas.
 PROMPT;
 
@@ -33,10 +33,11 @@ PROMPT;
       return $response;
     }
     $content = isset($response['content']) ? $response['content'] : '';
-    // Limpiar backticks si vinieran
-    $content = preg_replace('/^\s*```[a-z]*\s*/i', '', $content);
-    $content = preg_replace('/\s*```\s*$/i', '', $content);
-    return trim( (string) $content );
+    $content = trim((string) $content);
+    if (!preg_match('/^-----BEGIN_P5JS-----\n([\s\S]+?)\n-----END_P5JS-----$/', $content, $m)) {
+      return new \WP_Error('wpg_p5_missing', 'No se encontró el bloque de código p5.js en la respuesta.');
+    }
+    return trim($m[1]);
   }
 
   private function openai_call( $prompt ) {
