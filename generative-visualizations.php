@@ -482,7 +482,7 @@ if ( ! function_exists( 'gv_render_p5_shortcode' ) ) {
 
                // Print raw inside <script> without wpautop/kses interfering.
                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-               return "<div class=\"gv-container\"></div>\n<script>\n{$code}\n</script>";
+               return "<div class=\"gv-container\"></div>" . PHP_EOL . "<script>" . PHP_EOL . $code . PHP_EOL . "</script>";
        }
        add_shortcode( 'gv', 'gv_render_p5_shortcode' );
 }

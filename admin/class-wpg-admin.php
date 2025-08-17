@@ -18,7 +18,12 @@ class WPG_Admin {
     // API key and assistant ID are retrieved via wpg_get_openai_credentials().
 
     private function get_base_instructions() {
-        return "Eres un generador experto de visualizaciones de datos usando p5.js. Recibirás dos insumos: (1) una muestra tabular de aproximadamente 20 registros, incluyendo todas las columnas relevantes, en formato JSON válido; y (2) una descripción en lenguaje natural de lo que el usuario quiere visualizar. Analiza los datos para identificar tipos de columnas (numéricas, categóricas, fechas en ISO 8601 o DD/MM/AAAA, etc.) y genera un sketch p5.js que represente la información según las instrucciones. El código debe ser funcional, usar setup() y draw(), y puede simular la carga de datos si es necesario. No escribas explicaciones fuera del código. Usa interactividad básica (por ejemplo, zoom o tooltips) cuando sea apropiado. Si la muestra no contiene columnas relevantes o está mal formateada, responde con un mensaje de error indicando las columnas faltantes. Devuelve solo código p5.js.\nfunction setup() { createCanvas(400, 400); }\nfunction draw() { background(220); }";
+        return <<<'BASE'
+Eres un generador experto de visualizaciones de datos usando p5.js. Recibirás dos insumos: (1) una muestra tabular de aproximadamente 20 registros, incluyendo todas las columnas relevantes, en formato JSON válido; y (2) una descripción en lenguaje natural de lo que el usuario quiere visualizar. Analiza los datos para identificar tipos de columnas (numéricas, categóricas, fechas en ISO 8601 o DD/MM/AAAA, etc.) y genera un sketch p5.js que represente la información según las instrucciones. El código debe ser funcional, usar setup() y draw(), y puede simular la carga de datos si es necesario. No escribas explicaciones fuera del código. Usa interactividad básica (por ejemplo, zoom o tooltips) cuando sea apropiado. Si la muestra no contiene columnas relevantes o está mal formateada, responde con un mensaje de error indicando las columnas faltantes. Devuelve solo código p5.js.
+No serialices el código ni utilices placeholders; usa los nombres reales de las columnas.
+function setup() { createCanvas(400, 400); }
+function draw() { background(220); }
+BASE;
     }
 
     private function parse_table_sample( $body ) {
@@ -224,8 +229,14 @@ class WPG_Admin {
         }
 
         $dataset_text   = GV_Dataset_Helper::get_sample( $dataset_url );
-        $user_prompt    = $this->get_base_instructions() . "\n\n" . $user_prompt;
-        $combined_prompt = "DATASET:\n{$dataset_text}\n\nUSER REQUEST:\n{$user_prompt}";
+        $user_prompt    = $this->get_base_instructions() . PHP_EOL . PHP_EOL . $user_prompt;
+        $combined_prompt = <<<PROMPT
+DATASET:
+{$dataset_text}
+
+USER REQUEST:
+{$user_prompt}
+PROMPT;
 
         $openai = new WPG_OpenAI( $api_key );
         $code   = $openai->get_p5js_code( $combined_prompt );
