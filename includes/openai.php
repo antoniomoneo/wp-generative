@@ -4,14 +4,15 @@
 defined( 'ABSPATH' ) || exit;
 
 function wpg_extract_p5_code( $text ) {
-  // 1) remove markdown fences if present
-  $text = preg_replace('/^\s*```(?:javascript|js|p5)?\s*/i', '', $text);
-  $text = preg_replace('/\s*```\s*$/', '', $text);
-  // 2) normalize line endings and trim
-  $text = str_replace('\\n', "\n", $text);
-  $text = preg_replace("/\r\n|\r/", "\n", $text);
-  $text = trim( $text );
-  return wpg_normalize_p5_code( $text );
+  if ( ! is_string( $text ) || $text === '' ) {
+    return '';
+  }
+  if ( ! preg_match('/^-----BEGIN_P5JS-----\n([\s\S]+?)\n-----END_P5JS-----$/', trim($text), $m) ) {
+    return '';
+  }
+  $code = $m[1];
+  $code = str_replace("\r\n", "\n", $code);
+  return wpg_normalize_p5_code( trim( $code ) );
 }
 
 function wpg_normalize_p5_code( $code ) {
@@ -77,14 +78,14 @@ Obligatorio:
 - Devuelve SOLO código JavaScript p5.js válido (sin HTML, sin comentarios extensos, sin explicaciones).
 - setup() y draw() obligatorios; preload() si cargas el CSV con loadTable().
 - Si la URL falla, simula datos con arrays para que el sketch funcione.
-- No uses backticks ni fences Markdown en la salida.
+- La salida debe ir delimitada exactamente por las líneas `-----BEGIN_P5JS-----` y `-----END_P5JS-----`.
 - No serialices el código ni utilices placeholders; usa directamente los nombres reales de las columnas del dataset.
 SYS;
 
   $user_content = <<<USER
 CSV_URL: {$dataset_url}
 DESCRIPCION: {$user_prompt}
-Entrega SOLO código p5.js.
+Entrega únicamente el bloque delimitado por BEGIN/END.
 USER;
 
   $messages = [
@@ -116,9 +117,12 @@ USER;
   }
   $json = json_decode( wp_remote_retrieve_body( $res ), true );
 
-  $raw = isset( $json['output'][0]['content'][0]['text'] ) ? $json['output'][0]['content'][0]['text'] : '';
+  $raw  = isset( $json['output'][0]['content'][0]['text'] ) ? $json['output'][0]['content'][0]['text'] : '';
   $code = wpg_extract_p5_code( $raw );
-  if ( ! $code || ! wpg_is_valid_p5( $code ) ) {
+  if ( ! $code ) {
+    return new WP_Error( 'wpg_p5_missing', 'No se encontró el bloque de código p5.js en la respuesta.' );
+  }
+  if ( ! wpg_is_valid_p5( $code ) ) {
     return new WP_Error( 'wpg_p5_invalid', 'La respuesta no contiene código p5.js válido' );
   }
   return $code;

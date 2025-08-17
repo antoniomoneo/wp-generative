@@ -3,7 +3,7 @@
 add_action('init', function(){
   if (!isset($_GET['td_test_extractor']) || !current_user_can('manage_options')) return;
 
-  $assistant_no_fences = [
+  $assistant_sin_bloque = [
     'content' => [
       [
         'type' => 'text',
@@ -12,11 +12,11 @@ add_action('init', function(){
     ]
   ];
 
-  $assistant_with_fences = [
+  $assistant_con_bloque = [
     'content' => [
       [
         'type' => 'text',
-        'text' => ['value' => "```js\nlet data=[];function setup(){createCanvas(100,100);}function draw(){background(220);}\n```"]
+        'text' => ['value' => "-----BEGIN_P5JS-----\nlet data=[];function setup(){createCanvas(100,100);}function draw(){background(220);}\n-----END_P5JS-----"]
       ]
     ]
   ];
@@ -28,7 +28,7 @@ add_action('init', function(){
   header('Content-Type: text/html; charset=utf-8');
   echo '<h1>TD Test Extractor</h1>';
 
-  foreach (['SIN fences' => $assistant_no_fences, 'CON fences' => $assistant_with_fences] as $label => $msg) {
+  foreach (['SIN bloque' => $assistant_sin_bloque, 'CON bloque' => $assistant_con_bloque] as $label => $msg) {
     $raw = td_get_assistant_text($msg);
     $code = td_extract_p5_code($raw);
     echo "<h2>Test $label</h2>";

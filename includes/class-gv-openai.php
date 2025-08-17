@@ -38,7 +38,7 @@ DATASET:
 USER REQUEST:
 {$user_prompt}
 
-Responde SOLO entre <<P5_START>> y <<P5_END>>, sin Markdown ni HTML, con setup() y draw(). No serialices el código ni utilices placeholders; emplea los nombres reales de las columnas.
+Responde SOLO entre las marcas -----BEGIN_P5JS----- y -----END_P5JS-----, sin Markdown ni HTML, con setup() y draw(). No serialices el código ni utilices placeholders; emplea los nombres reales de las columnas.
 PROMPT;
 
                // Crear thread una vez y reusar en reintentos.
@@ -64,7 +64,7 @@ PROMPT;
                        $last_err = 'Intento ' . $i . ' inválido. Falta delimitador o setup()/draw().';
                        error_log( '[wp-generative] ' . $last_err );
                        // Mensaje correctivo y nuevo run.
-                       $retry_msg = "Tu respuesta NO cumplió el formato. Reenvía SOLO p5.js entre <<P5_START>> y <<P5_END>>, sin Markdown, con setup() y draw().";
+                       $retry_msg = "Tu respuesta NO cumplió el formato. Reenvía SOLO p5.js entre -----BEGIN_P5JS----- y -----END_P5JS-----, sin Markdown, con setup() y draw().";
                        $this->add_user_message( $thread_id, $retry_msg );
                }
                return "/* ERROR: No se obtuvo código p5.js válido tras reintentos. Último error: {$last_err} */";
@@ -121,12 +121,12 @@ PROMPT;
        }
 
        protected function run_and_collect( $thread_id, $attempt ) {
-               // Crear run con instrucciones forzando delimitadores.
+                       // Crear run con instrucciones forzando delimitadores.
                $url_run = 'https://api.openai.com/v1/threads/' . rawurlencode( $thread_id ) . '/runs';
                $body = array(
                        'assistant_id' => $this->assistant_id,
                        // Refuerza instrucciones para este run:
-                       'instructions' => "Responde SIEMPRE SOLO con código p5.js entre <<P5_START>> y <<P5_END>>, sin Markdown ni HTML. Incluye setup() y draw().",
+                       'instructions' => "Responde SIEMPRE SOLO con código p5.js entre -----BEGIN_P5JS----- y -----END_P5JS-----, sin Markdown ni HTML. Incluye setup() y draw().",
                );
                $res = wp_remote_post( $url_run, array(
                        'timeout' => 30,
@@ -218,7 +218,7 @@ PROMPT;
                if ( ! is_string( $raw ) || '' === $raw ) {
                        return '';
                }
-               if ( preg_match( '/<<P5_START>>(.*)<<P5_END>>/s', $raw, $m ) ) {
+               if ( preg_match( '/^-----BEGIN_P5JS-----\n([\s\S]+?)\n-----END_P5JS-----$/', trim($raw), $m ) ) {
                        $code = trim( $m[1] );
                } else {
                        $code = trim( $raw );

@@ -38,15 +38,14 @@ function td_get_assistant_text(array $assistant_message): string {
 
 function td_extract_p5_code(string $text): ?string {
   if ($text === '') return null;
-  if (preg_match('/```(?:js|javascript|p5)?\s*([\s\S]*?)```/i', $text, $m)) {
-    $code = trim($m[1]);
-  } else {
-    $looks_like_sketch = stripos($text, 'function setup') !== false && stripos($text, 'function draw') !== false;
-    $code = $looks_like_sketch ? trim($text) : null;
+  $text = trim($text);
+  if (!preg_match('/^-----BEGIN_P5JS-----\n([\s\S]+?)\n-----END_P5JS-----$/', $text, $m)) {
+    return null;
   }
-  if (!$code) return null;
+  $code = $m[1];
   $code = preg_replace("/^\xEF\xBB\xBF/", '', $code);
   $code = str_replace("\r\n", "\n", $code);
+  $code = trim($code);
   return $code !== '' ? $code : null;
 }
 
