@@ -54,7 +54,7 @@ class GV_Dataset_Helper {
                // Byte cap.
                $max_bytes = (int) apply_filters( 'gv_dataset_sample_limit_bytes', self::DEFAULT_BYTES );
                if ( strlen( $text ) > $max_bytes ) {
-                       $text = substr( $text, 0, $max_bytes ) . "\n... [truncated]\n";
+                       $text = substr( $text, 0, $max_bytes ) . PHP_EOL . "... [truncated]" . PHP_EOL;
                }
 
                // Rows cap.
@@ -62,7 +62,7 @@ class GV_Dataset_Helper {
                $lines    = preg_split( "/\r\n|\n|\r/", $text );
                if ( is_array( $lines ) && count( $lines ) > $max_rows ) {
                        $lines = array_slice( $lines, 0, $max_rows );
-                       $text  = implode( "\n", $lines ) . "\n... [truncated]\n";
+                       $text  = implode( PHP_EOL, $lines ) . PHP_EOL . "... [truncated]" . PHP_EOL;
                }
 
                if ( function_exists( 'mb_convert_encoding' ) ) {

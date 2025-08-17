@@ -31,8 +31,15 @@ class GV_OpenAI_Client {
                }
 
                $dataset_text     = $dataset_url ? GV_Dataset_Helper::get_sample( $dataset_url ) : 'DATASET NOT AVAILABLE';
-               $combined_prompt  = "DATASET:\n" . $dataset_text . "\n\nUSER REQUEST:\n" . (string) $user_prompt .
-                                   "\n\nResponde SOLO entre <<P5_START>> y <<P5_END>>, sin Markdown ni HTML, con setup() y draw().";
+               $combined_prompt  = <<<PROMPT
+DATASET:
+{$dataset_text}
+
+USER REQUEST:
+{$user_prompt}
+
+Responde SOLO entre <<P5_START>> y <<P5_END>>, sin Markdown ni HTML, con setup() y draw(). No serialices el código ni utilices placeholders; emplea los nombres reales de las columnas.
+PROMPT;
 
                // Crear thread una vez y reusar en reintentos.
                $thread_id = $this->create_thread();
@@ -216,7 +223,7 @@ class GV_OpenAI_Client {
                } else {
                        $code = trim( $raw );
                }
-               $code = str_replace( array("\r\n", "\r"), "\n", $code );
+               $code = str_replace( array("\r\n", "\r", '\\n'), "\n", $code );
                return $code;
        }
 

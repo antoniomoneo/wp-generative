@@ -178,8 +178,8 @@ add_shortcode('p5js_visual', function ($atts) {
 function wpgen_render_p5_block($js_code) {
     $id = 'p5-holder-' . wp_generate_uuid4();
     $html  = '<div class="wpgen-p5-holder" id="' . esc_attr($id) . '"></div>';
-    $html .= "<!-- Código p5.js generado por OpenAI (wp-generative) -->\n";
-    $html .= "<script>(function(){\n" . $js_code . "\n})();</script>";
+    $html .= "<!-- Código p5.js generado por OpenAI (wp-generative) -->" . PHP_EOL;
+    $html .= "<script>(function(){" . PHP_EOL . $js_code . PHP_EOL . "})();</script>";
     return $html;
 }
 

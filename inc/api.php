@@ -26,7 +26,13 @@ function tdg_handle_openai_request(\WP_REST_Request $req) {
     return new \WP_Error('no_api_key', 'Configura tu OpenAI API key.', ['status' => 500]);
   }
 
-  $input = "DATASET: {$dataset_url}\nINSTRUCCIONES: {$user_prompt}\n\nDevuelve SOLO código p5.js sin HTML y con setup() y draw() (preload() opcional).";
+  $input = <<<INPUT
+DATASET: {$dataset_url}
+INSTRUCCIONES: {$user_prompt}
+
+Devuelve SOLO código p5.js sin HTML y con setup() y draw() (preload() opcional).
+No serialices el código ni utilices placeholders; usa los nombres reales de las columnas.
+INPUT;
 
   $body = [
     'assistant_id' => $assistant_id,

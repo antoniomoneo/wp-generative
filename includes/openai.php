@@ -8,6 +8,7 @@ function wpg_extract_p5_code( $text ) {
   $text = preg_replace('/^\s*```(?:javascript|js|p5)?\s*/i', '', $text);
   $text = preg_replace('/\s*```\s*$/', '', $text);
   // 2) normalize line endings and trim
+  $text = str_replace('\\n', "\n", $text);
   $text = preg_replace("/\r\n|\r/", "\n", $text);
   $text = trim( $text );
   return wpg_normalize_p5_code( $text );
@@ -27,10 +28,20 @@ function wpg_normalize_p5_code( $code ) {
   $code = strtr( $code, $replacements );
 
   if ( strpos( $code, 'function setup' ) === false ) {
-    $code = "function setup() {\n}\n\n" . $code;
+    $code = <<<'P5SETUP'
+function setup() {
+}
+
+P5SETUP
+    . $code;
   }
   if ( strpos( $code, 'function draw' ) === false ) {
-    $code .= "\n\nfunction draw() {\n}\n";
+    $code .= <<<'P5DRAW'
+
+function draw() {
+}
+
+P5DRAW;
   }
 
   return trim( $code );
@@ -57,24 +68,28 @@ function wpg_normalize_p5_json( $json ) {
 
 function wpg_call_openai_p5( $dataset_url, $user_prompt ) {
   $creds = wpg_get_openai_credentials();
-  $system_instructions =
-    "Eres un generador experto de visualizaciones interactivas usando p5.js. " .
-    "Recibirás: (1) una URL de un CSV (raw de GitHub) y (2) una descripción de la visualización.\n" .
-    "Obligatorio:\n" .
-    "- Descarga el CSV con loadTable(url, 'csv', 'header') en preload().\n" .
-    "- Detecta tipos de columnas y crea la visualización solicitada.\n" .
-    "- Devuelve SOLO código JavaScript p5.js válido (sin HTML, sin comentarios extensos, sin explicaciones).\n" .
-    "- `setup()` y `draw()` obligatorios; `preload()` si cargas el CSV con loadTable().\n" .
-    "- Si la URL falla, simula datos con arrays para que el sketch funcione.\n" .
-    "- No uses backticks ni fences Markdown en la salida.";
+  $system_instructions = <<<'SYS'
+Eres un generador experto de visualizaciones interactivas usando p5.js.
+Recibirás: (1) una URL de un CSV (raw de GitHub) y (2) una descripción de la visualización.
+Obligatorio:
+- Descarga el CSV con loadTable(url, 'csv', 'header') en preload().
+- Detecta tipos de columnas y crea la visualización solicitada.
+- Devuelve SOLO código JavaScript p5.js válido (sin HTML, sin comentarios extensos, sin explicaciones).
+- setup() y draw() obligatorios; preload() si cargas el CSV con loadTable().
+- Si la URL falla, simula datos con arrays para que el sketch funcione.
+- No uses backticks ni fences Markdown en la salida.
+- No serialices el código ni utilices placeholders; usa directamente los nombres reales de las columnas del dataset.
+SYS;
+
+  $user_content = <<<USER
+CSV_URL: {$dataset_url}
+DESCRIPCION: {$user_prompt}
+Entrega SOLO código p5.js.
+USER;
 
   $messages = [
     [ 'role' => 'system', 'content' => $system_instructions ],
-    [ 'role' => 'user', 'content' =>
-        'CSV_URL: ' . $dataset_url . "\n" .
-        'DESCRIPCION: ' . $user_prompt . "\n" .
-        'Entrega SOLO código p5.js.'
-    ],
+    [ 'role' => 'user', 'content' => $user_content ],
   ];
 
   $body = [
