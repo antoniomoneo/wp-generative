@@ -358,7 +358,11 @@
         function renderIframe(c) {
             const safe = c.replace(/<\/script>/g, '<\\/script>');
             const doc = `<!DOCTYPE html><html><head><script src="${WPG_Ajax.p5_url}"></script></head><body><script>${safe}</script></body></html>`;
-            iframe[0].srcdoc = doc;
+            if ('srcdoc' in iframe[0]) {
+                iframe[0].srcdoc = doc;
+            } else {
+                iframe[0].src = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
+            }
         }
     }
     $(initCodeEditor);
