@@ -19,6 +19,6 @@
   </p>
   <div class="td-status" aria-live="polite"></div>
   <div class="td-preview-wrap">
-    <iframe id="td_preview_iframe" title="Vista previa p5.js" sandbox="allow-scripts allow-same-origin" style="width:100%;height:420px;border:1px solid #ddd;"></iframe>
+    <iframe id="td_preview_iframe" title="Vista previa p5.js" sandbox="allow-scripts allow-same-origin" src="about:blank" style="width:100%;height:420px;border:1px solid #ddd;"></iframe>
   </div>
 </div>
