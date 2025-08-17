@@ -29,8 +29,12 @@ function draw() {
   }
 }
 
+function getvalue() {
+  return respuestaInput.value().trim();
+}
+
 function guardarRespuesta() {
-  const texto = respuestaInput.value().trim();
+  const texto = getvalue();
   if (texto !== '') {
     respuestas.push(texto);
     respuestaInput.value('');
